@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pakowacz</title>
+
+
+    <style>
+        #grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            grid-template-rows: 1fr auto;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: .5rem
+        }
+
+        .side {
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-end;
+        }
+
+        .checkbox-list {
+            display: grid;
+            justify-items: start;
+            align-items: start;
+        }
+    </style>
+</head>
+
+<body>
+
+
+    <br>
+
+    <div id="grid">
+        <div class="controls">
+            <h3>Kartony: </h3>
+
+
+            <select class="cardboard-brushes-list" id="cardboard-col">
+                <option value="-1" disabled>Wybierz karton</option>
+            </select>
+            <select class="cardboard-brushes-list" id="cardboard-row">
+                <option value="-1" disabled>Wybierz karton</option>
+            </select>
+
+
+            <button id="draw">Rusuj ściany</button>
+            <button id="render">Renderuj 3D</button>
+
+        </div>
+        <div class="row side" style="flex-direction: column;">
+            <h5 id="row-name"></h5>
+            <canvas id="row-canvas" width="1" height="1"></canvas>
+            <div class="checkbox-list" id="row-check"></div>
+        </div>
+        <div class="col side" style="flex-direction: row;">
+            <h5 id="col-name"></h5>
+            <canvas id="col-canvas" width="1" height="1"></canvas>
+            <div class="checkbox-list" id="col-check"></div>
+        </div>
+        <div>
+            <canvas id="render-canvas" width="2000" height="2000"></canvas>
+        </div>
+    </div>
+
+    <script>
+        class Canvas {
+            width = 1
+            height = 1
+
+            constructor(canvas, offset = 10) {
+                this.canvas = document.getElementById(`${canvas}-canvas`)
+                this.check = document.getElementById(`${canvas}-check`)
+                this.name = document.getElementById(`${canvas}-name`)
+
+                this.ctx = this.canvas.getContext("2d")
+                this.offset = offset
+            }
+
+            clear() {
+                this.ctx.clearRect(0, 0, this.width, this.height)
+            }
+            resize(w, h) {
+                this.width = h + 2 * this.offset
+                this.height = w + 2 * this.offset
+
+                this.canvas.width = this.width
+                this.canvas.height = this.height
+            }
+        }
+
+        var col = new Canvas("col")
+        var row = new Canvas("row")
+
+        class CardboardBrushe {
+
+            constructor(name = "", height = 0, length = 0, gap = 0, toothList = [0], cutCount = 0, margin = [0]) {
+                this.name = name
+                this.height = height
+                this.length = length
+                this.gap = gap
+                this.cutCount = cutCount
+
+                if (toothList.length !== cutCount - 1) {
+                    toothList.length = cutCount - 1
+                    toothList.fill(toothList[0])
+                }
+
+                this.toothList = toothList
+                this.margin = margin
+            }
+
+            toString() {
+                return `${name}`
+            }
+
+            draw(c, rotate = false) {
+
+                let check = document.createElement("input")
+                check.type = "checkbox"
+                c.check.appendChild(check)
+                c.check.style.gap = this.gap + "px"
+                c.check.innerHTML = ""
+                c.check.appendChild(check)
+
+                if (rotate) {
+                    c.resize(this.height, this.length)
+
+                    c.check.style.width = this.length + 'px'
+                    c.check.style.padding = `0 ${(this.margin[0])}px 0 ${(2 * this.margin.reverse()[0]) - 6}px`
+
+
+                    let x = c.offset, y = c.offset
+                    c.ctx.moveTo(x, y)
+
+                    x += this.length
+                    c.ctx.lineTo(x, y)
+
+                    y += this.height
+                    c.ctx.lineTo(x, y)
+
+                    x -= this.margin[0]
+                    c.ctx.lineTo(x, y)
+
+                    c.check.style.gridTemplateColumns = this.toothList.join("px ") + "px 1px"
+
+
+                    for (let t = this.cutCount - 2; t >= 0; t--) {
+                        let check = document.createElement("input")
+                        check.type = "checkbox"
+                        check.style.position = "relative"
+                        c.check.appendChild(check)
+
+                        y -= this.height / 2
+                        c.ctx.lineTo(x, y)
+                        x -= this.gap
+                        c.ctx.lineTo(x, y)
+                        y += this.height / 2
+                        c.ctx.lineTo(x, y)
+                        x -= this.toothList[t]
+                        c.ctx.lineTo(x, y)
+                    }
+
+                    y -= this.height / 2
+                    c.ctx.lineTo(x, y)
+                    x -= this.gap
+                    c.ctx.lineTo(x, y)
+                    y += this.height / 2
+                    c.ctx.lineTo(x, y)
+
+
+                    x -= this.margin.reverse()[0]
+                    c.ctx.lineTo(x, y)
+
+                    y -= this.height
+                    c.ctx.lineTo(x, y)
+                }
+                else {
+                    c.resize(this.length, this.height)
+
+                    c.check.style.height = this.length + 'px'
+                    c.check.style.padding = `${(2 * this.margin[0] - 6)}px 0 ${(this.margin.reverse()[0])}px 0`
+
+                    let x = c.offset, y = c.offset + this.length
+                    c.ctx.moveTo(x, y)
+
+                    y -= this.length
+                    c.ctx.lineTo(x, y)
+
+                    x += this.height
+                    c.ctx.lineTo(x, y)
+
+                    y += this.margin[0]
+                    c.ctx.lineTo(x, y)
+
+                    c.check.style.gridTemplateRows = this.toothList.join("px ") + "px 1px"
+
+                    for (let t = this.cutCount - 2; t >= 0; t--) {
+                        let check = document.createElement("input")
+                        check.type = "checkbox"
+                        check.style.position = "relative"
+                        c.check.appendChild(check)
+
+                        x -= this.height / 2
+                        c.ctx.lineTo(x, y)
+                        y += this.gap
+                        c.ctx.lineTo(x, y)
+                        x += this.height / 2
+                        c.ctx.lineTo(x, y)
+
+                        console.log(this.toothList[t], t)
+                        y += this.toothList[t]
+                        c.ctx.lineTo(x, y)
+                    }
+                    x -= this.height / 2
+                    c.ctx.lineTo(x, y)
+                    y += this.gap
+                    c.ctx.lineTo(x, y)
+                    x += this.height / 2
+                    c.ctx.lineTo(x, y)
+
+
+                    y += this.margin.reverse()[0]
+                    c.ctx.lineTo(x, y)
+
+                    x -= this.height
+                    c.ctx.lineTo(x, y)
+                }
+
+                c.ctx.stroke()
+            }
+
+        }
+
+        let cardboardBrushes = [
+            new CardboardBrushe("Wymyślony grzebień 5NAC 50 150 150 50", 200, 445, 5, [50, 150, 150, 50], 5, [10]),
+            new CardboardBrushe("Wymyślony grzebień 9NAC", 200, 445, 5, [45], 9, [20]),
+            new CardboardBrushe("Wymyślony grzebień 5NAC", 200, 445, 5, [100], 5, [10]),
+            new CardboardBrushe("GRZEBIEŃ_390X205_17NAC", 205, 390, 3, [20], 17, [9.5]),
+            new CardboardBrushe("GRZEBIEŃ_390X205_3NAC", 205, 390, 3, [185], 3, [5.5]),
+        ]
+
+        col.clear()
+        row.clear()
+
+
+        let cardboardRow = document.getElementById("cardboard-row"),
+            cardboardCol = document.getElementById("cardboard-col")
+        let nameX = document.getElementById("name-row"),
+            nameY = document.getElementById("name-col")
+
+
+        for (let i = 0; i < cardboardBrushes.length; i++) {
+            let cardboardBrushe = cardboardBrushes[i]
+
+            let option = document.createElement("option")
+            option.value = i
+            option.text = cardboardBrushe.name
+
+            cardboardRow.appendChild(option.cloneNode(true))
+            cardboardCol.appendChild(option)
+        }
+
+        document.getElementById("draw").addEventListener("click", () => {
+            cardboardBrushes[cardboardRow.value].draw(row, true)
+            cardboardBrushes[cardboardCol.value].draw(col)
+        })
+
+        var render = {
+            canvas: document.getElementById("render-canvas"),
+            ctx: document.getElementById("render-canvas").getContext("2d"),
+            scale: 2,
+            colChecks: [],
+            rowChecks: [],
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.strokeStyle = '#000000';
+                this.ctx.lineWidth = 1;
+
+                const colBrush = cardboardBrushes[cardboardCol.value];
+                const rowBrush = cardboardBrushes[cardboardRow.value];
+
+                const allSegments = [];
+
+                let xOffset = 0;
+                for (let i = 0; i < this.colChecks.length; i++) {
+                    if (this.colChecks[i]) {
+                        let zOffset = 0;
+                        for (let j = 0; j < this.rowChecks.length; j++) {
+                            const segmentDepth = (j < this.rowChecks.length - 1) ? rowBrush.toothList[j] : rowBrush.length - zOffset;
+
+                            const segment = {
+                                x: xOffset,
+                                y: 0,
+                                z: zOffset,
+                                width: colBrush.gap,
+                                height: colBrush.height,
+                                depth: segmentDepth,
+                                color: '#8B4513'
+                            };
+                            allSegments.push(segment);
+
+                            if (j < this.rowChecks.length - 1) {
+                                zOffset += rowBrush.toothList[j] + rowBrush.gap;
+                            }
+                        }
+                    }
+                    if (i < this.colChecks.length - 1) {
+                        xOffset += colBrush.toothList[i] + colBrush.gap;
+                    }
+                }
+
+                let zOffset = 0;
+                for (let i = 0; i < this.rowChecks.length; i++) {
+                    if (this.rowChecks[i]) {
+                        let xOffset = 0;
+                        for (let j = 0; j < this.colChecks.length; j++) {
+                            const segmentWidth = (j < this.colChecks.length - 1) ? colBrush.toothList[j] : colBrush.length - xOffset;
+
+                            const segment = {
+                                x: xOffset,
+                                y: 0,
+                                z: zOffset,
+                                width: segmentWidth,
+                                height: colBrush.height,
+                                depth: rowBrush.gap,
+                                color: '#CD853F'
+                            };
+                            allSegments.push(segment);
+
+                            if (j < this.colChecks.length - 1) {
+                                xOffset += colBrush.toothList[j] + colBrush.gap;
+                            }
+                        }
+                    }
+                    if (i < this.rowChecks.length - 1) {
+                        zOffset += rowBrush.toothList[i] + rowBrush.gap;
+                    }
+                }
+
+                const totalXLength = colBrush.length;
+                const totalZLength = rowBrush.length;
+
+                allSegments.sort((a, b) => b.z - a.z);
+
+                allSegments.forEach(segment => {
+                    this.drawCuboid(
+                        segment.x - totalXLength / 2,
+                        segment.y,
+                        segment.z - totalZLength / 2,
+                        segment.width,
+                        segment.height,
+                        segment.depth,
+                        segment.color
+                    );
+                });
+            },
+
+            project(x, y, z) {
+                const x_2d = (x - z) * 0.866;
+                const y_2d = (y - (x + z) * 0.5);
+                return {
+                    x: x_2d * this.scale + this.canvas.width / 2,
+                    y: y_2d * this.scale + this.canvas.height / 2
+                };
+            },
+
+            drawCuboid(x, y, z, width, height, depth, color) {
+                // Zmiana współrzędnej y, aby bryła była rysowana w górę
+                const p1 = this.project(x, y, z);
+                const p2 = this.project(x + width, y, z);
+                const p3 = this.project(x + width, y, z + depth);
+                const p4 = this.project(x, y, z + depth);
+
+                const p5 = this.project(x, y + height, z);
+                const p6 = this.project(x + width, y + height, z);
+                const p7 = this.project(x + width, y + height, z + depth);
+                const p8 = this.project(x, y + height, z + depth);
+
+                const shadeColor = (baseColor, percentage) => {
+                    let [r, g, b] = [
+                        parseInt(baseColor.substring(1, 3), 16),
+                        parseInt(baseColor.substring(3, 5), 16),
+                        parseInt(baseColor.substring(5, 7), 16)
+                    ];
+                    r = Math.floor(r * percentage);
+                    g = Math.floor(g * percentage);
+                    b = Math.floor(b * percentage);
+                    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+                };
+
+                const faces = [
+                    { points: [p1, p2, p6, p5], fill: shadeColor(color, 0.8) },
+                    { points: [p2, p3, p7, p6], fill: shadeColor(color, 0.9) },
+                    { points: [p3, p4, p8, p7], fill: shadeColor(color, 0.7) },
+                    { points: [p4, p1, p5, p8], fill: shadeColor(color, 0.95) },
+                    { points: [p5, p6, p7, p8], fill: shadeColor(color, 1.0) }
+                ];
+
+                faces.forEach(face => {
+                    this.ctx.fillStyle = face.fill;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(face.points[0].x, face.points[0].y);
+                    for (let i = 1; i < face.points.length; i++) {
+                        this.ctx.lineTo(face.points[i].x, face.points[i].y);
+                    }
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                });
+            }
+        }
+
+        document.getElementById("render").addEventListener("click", () => {
+            let colChecks = [...document.querySelectorAll("#col-check > input")].map(e => e.checked),
+                rowChecks = [...document.querySelectorAll("#row-check > input")].map(e => e.checked)
+
+            render.colChecks = colChecks
+            render.rowChecks = rowChecks
+
+            render.draw()
+        })
+
+    </script>
+</body>
+
+</html>

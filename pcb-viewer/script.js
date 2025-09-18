@@ -196,7 +196,7 @@ function drawOverlay() {
         if (state.showNames) {
             ctx.save();
             ctx.translate(x, y);
-            ctx.rotate((-compRotation) * Math.PI / 180);
+            ctx.rotate((-compRotation % 180) * Math.PI / 180);
             ctx.fillText(comp.designator, 0, 0);
             ctx.restore();
         } else {
@@ -243,10 +243,12 @@ elements.pickPlaceInput.addEventListener('change', (event) => {
                 if (line.startsWith('"Designator"')) {
                     headers = line.split('","').map(h => h.replace(/"/g, '').trim());
                     tableStarted = true;
+                    console.log(headers)
                     return;
                 }
                 if (tableStarted && line) {
                     const values = line.split('","').map(v => v.replace(/"/g, '').trim());
+                    console.log(values, headers.length)
                     if (values.length === headers.length) {
                         const entry = {};
                         headers.forEach((header, index) => {

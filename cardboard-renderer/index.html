@@ -59,7 +59,8 @@
             gap: 1rem;
         }
 
-        #view-controls {
+        .view-controls {
+            color: gray;
             position: absolute;
             top: 10px;
             left: 10px;
@@ -69,6 +70,16 @@
             background: rgba(255, 255, 255, 0.5);
             padding: 5px;
             border-radius: 5px;
+        }
+
+        .view-controls hr {
+            margin: 0 10px;
+        }
+
+        .view-controls > div {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
 
         .view-button {
@@ -81,27 +92,9 @@
             text-align: center;
         }
 
+
         .view-button:hover {
             background-color: #d1d5db;
-        }
-
-        @media (max-width: 768px) {
-            #app-container {
-                flex-direction: column;
-                height: auto;
-                min-height: 100vh;
-            }
-
-            #controls-panel {
-                width: 100%;
-                height: auto;
-                border-right: none;
-                border-bottom: 1px solid #e5e7eb;
-            }
-
-            .notch-grid-container {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
         }
     </style>
 </head>
@@ -130,38 +123,17 @@
         </div>
 
         <div id="render-container" class="rounded-r-lg overflow-hidden">
-            <div id="view-controls">
-                <button class="view-button font-bold" data-view="top">⤓</button>
-                <button class="view-button font-bold" data-view="front">⇥</button>
-                <button class="view-button font-bold" data-view="side">⇤</button>
-                <button class="view-button font-bold" data-view="reset">↺</button>
+            <div class="view-controls">
+                <div id="view-controls">
+                    <button class="view-button font-bold" data-view="top">⬇️</button>
+                    <button class="view-button font-bold" data-view="reset">🔄️</button>
+                </div>
+                <hr>
+                <div>
+                    <input id="view-background" class="view-button font-bold" type="color"></input>
+                    <button id="view-screenshot" class="view-button font-bold">🎦</button>
+                </div>
             </div>
-        </div>
-
-        <div class="bg-gray-100 p-6 rounded-xl mb-6 shadow-sm">
-            <h2 class="text-xl font-semibold mb-4 text-center">Dodaj Prostopadłościan</h2>
-            <div class="space-y-4">
-                <div>
-                    <label for="rect-width" class="block text-sm font-medium text-gray-700 mb-1">Szerokość:</label>
-                    <input type="number" id="rect-width"
-                        class="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 rounded-md" value="10">
-                </div>
-                <div>
-                    <label for="rect-depth" class="block text-sm font-medium text-gray-700 mb-1">Głębokość:</label>
-                    <input type="number" id="rect-depth"
-                        class="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 rounded-md" value="10">
-                </div>
-                <div>
-                    <label for="rect-height" class="block text-sm font-medium text-gray-700 mb-1">Wysokość:</label>
-                    <input type="number" id="rect-height"
-                        class="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 rounded-md" value="10">
-                </div>
-                <button id="add-rectangle-btn"
-                    class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-md">
-                    Dodaj
-                </button>
-            </div>
-
         </div>
     </div>
 

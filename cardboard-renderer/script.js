@@ -489,4 +489,26 @@ window.onload = function () {
             setCameraView(view);
         });
     });
+
+    const viewScreenshot = document.querySelector('#view-screenshot');
+    viewScreenshot.addEventListener('click', () => {
+        let cardboard1 = cardboardData.find(c => c.id === selectedCardboards.axis1);
+        let cardboard2 = cardboardData.find(c => c.id === selectedCardboards.axis2);
+
+        // get scene camera view form threejs renderer and save it as image
+        renderer.render(scene, camera);
+        renderer.domElement.toBlob(function (blob) {
+            var a = document.createElement('a');
+            var url = URL.createObjectURL(blob);
+            a.href = url;
+            a.download = `${cardboard1.name} x ${cardboard2.name}`;
+            a.click();
+        }, 'image/png', 1.0);
+    })
+
+    const viewBackground = document.querySelector('#view-background');
+    viewBackground.addEventListener('input', (e) => {
+        const background = e.target.value;
+        scene.background = new THREE.Color(background);
+    });
 };

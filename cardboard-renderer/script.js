@@ -6,6 +6,10 @@ let mouseX = 0, mouseY = 0;
 let rotationSpeed = 0.005;
 let panSpeed = 0.5;
 let target = new THREE.Vector3(0, 0, 0); // Nowy punkt docelowy kamery
+let orthoCamera, perspectiveCamera;
+let isOrtho = false;
+
+
 
 const cardboardData = []
 const TEXT_HEIGHT = 10;
@@ -41,6 +45,30 @@ function init() {
         axis1: cardboardData.length > 0 ? cardboardData[0].id : null,
         axis2: cardboardData.length > 1 ? cardboardData[1].id : null
     };
+
+    // Kamera perspektywiczna
+    perspectiveCamera = new THREE.PerspectiveCamera(
+        75, container.clientWidth / container.clientHeight, 0.1, 2000
+    );
+    perspectiveCamera.position.set(-250, 300, 250);
+    perspectiveCamera.lookAt(target);
+
+    // Kamera ortograficzna (izometryczna)
+    const aspect = container.clientWidth / container.clientHeight;
+    const frustumSize = 500; // wielkość sceny w ortho
+    orthoCamera = new THREE.OrthographicCamera(
+        -frustumSize * aspect / 2,
+        frustumSize * aspect / 2,
+        frustumSize / 2,
+        -frustumSize / 2,
+        -2000, 2000
+    );
+    orthoCamera.position.set(-250, 300, 250);
+    orthoCamera.lookAt(target);
+
+    // Domyślnie używamy perspektywicznej
+    camera = perspectiveCamera;
+
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0xd1d5db);
@@ -267,7 +295,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
 
     loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
 
-        // Wymiary na osi pionowej (dla karonu 1)
+        // Wymiary na osi pionowej z frontu jak i z tyłu (dla karonu 1) 
         const selected1 = selectedNotches.axis1[cardboard1.id];
         const activeNotches1 = notchesPositions1.filter((_, i) => selected1[i]);
         for (let i = 0; i < activeNotches1.length - 1; i++) {
@@ -277,6 +305,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             const midPos = (startPos + endPos) / 2;
             const yOffset = cardboard1.depth / 2;
             const zOffset = cardboard2.width / 2 + 10;
+            const zOffsetOpposite = -cardboard2.width / 2 - 10;
             const extLineLength = 5;
 
             // Linia pomocnicza 1
@@ -306,21 +335,52 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             const dimLine = new THREE.Line(dimGeometry, dimMaterial);
             cardboardGroup.add(dimLine);
 
+            // Linia pomocnicza 1 tył
+            const points3 = [
+                new THREE.Vector3(startPos + THICKNESS / 2, yOffset, zOffsetOpposite),
+                new THREE.Vector3(startPos + THICKNESS / 2, yOffset, zOffsetOpposite + extLineLength)
+            ];
+            const geometry3 = new THREE.BufferGeometry().setFromPoints(points3);
+            const line3 = new THREE.Line(geometry3, dimMaterial);
+            cardboardGroup.add(line3);
+            // Linia pomocnicza 2 tył
+            const points4 = [
+                new THREE.Vector3(endPos - THICKNESS / 2, yOffset, zOffsetOpposite),
+                new THREE.Vector3(endPos - THICKNESS / 2, yOffset, zOffsetOpposite + extLineLength)
+            ];
+            const geometry4 = new THREE.BufferGeometry().setFromPoints(points4);
+            const line4 = new THREE.Line(geometry4, dimMaterial);
+            cardboardGroup.add(line4);
+            // Linia wymiarowa
+            const dimPoints2 = [
+                new THREE.Vector3(startPos + THICKNESS / 2, yOffset, zOffsetOpposite),
+                new THREE.Vector3(endPos - THICKNESS / 2, yOffset, zOffsetOpposite)
+            ];
+            const dimGeometry2 = new THREE.BufferGeometry().setFromPoints(dimPoints2);
+            const dimLine2 = new THREE.Line(dimGeometry2, dimMaterial);
+            cardboardGroup.add(dimLine2);
+
             // Tekst
             const textGeometry = new THREE.TextGeometry(distance, {
                 font: font,
-                size: 5,
+                size: 7,
                 height: 0.1,
                 curveSegments: 12,
             });
             textGeometry.computeBoundingBox();
             const textWidth = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x;
             const textHeight = textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y;
+
             const textMesh = new THREE.Mesh(textGeometry, textMaterial);
             textMesh.position.set(midPos - textWidth / 2, yOffset, zOffset + textHeight + 3);
             textMesh.rotation.x = -Math.PI / 2;
             cardboardGroup.add(textMesh);
+
+            const textMesh2 = new THREE.Mesh(textGeometry, textMaterial);
+            textMesh2.position.set(midPos - textWidth / 2, yOffset + 3, zOffsetOpposite);
+            cardboardGroup.add(textMesh2);
         }
+
 
         // Wymiary na osi poziomej (dla kartonu 2)
         const selected2 = selectedNotches.axis2[cardboard2.id];
@@ -331,6 +391,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             const distance = Math.abs(endPos - startPos - THICKNESS).toFixed(1);
             const midPos = (startPos + endPos) / 2;
             const xOffset = -cardboard1.width / 2 - 10;
+            const xOffsetOpposite = cardboard1.width / 2 + 10;
             const yOffset = cardboard2.depth / 2;
             const extLineLength = 5;
 
@@ -361,21 +422,52 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             const dimLine = new THREE.Line(dimGeometry, dimMaterial);
             cardboardGroup.add(dimLine);
 
+            // Linia pomocnicza 1 tył
+            const points3 = [
+                new THREE.Vector3(xOffsetOpposite, yOffset, startPos + THICKNESS / 2),
+                new THREE.Vector3(xOffsetOpposite - extLineLength, yOffset, startPos + THICKNESS / 2)
+            ];
+            const geometry3 = new THREE.BufferGeometry().setFromPoints(points3);
+            const line3 = new THREE.Line(geometry3, dimMaterial);
+            cardboardGroup.add(line3);
+            // Linia pomocnicza 2 tył
+            const points4 = [
+                new THREE.Vector3(xOffsetOpposite, yOffset, endPos - THICKNESS / 2),
+                new THREE.Vector3(xOffsetOpposite - extLineLength, yOffset, endPos - THICKNESS / 2)
+            ];
+            const geometry4 = new THREE.BufferGeometry().setFromPoints(points4);
+            const line4 = new THREE.Line(geometry4, dimMaterial);
+            cardboardGroup.add(line4);
+            // Linia wymiarowa
+            const dimPoints2 = [
+                new THREE.Vector3(xOffsetOpposite, yOffset, startPos + THICKNESS / 2),
+                new THREE.Vector3(xOffsetOpposite, yOffset, endPos - THICKNESS / 2)
+            ];
+            const dimGeometry2 = new THREE.BufferGeometry().setFromPoints(dimPoints2);
+            const dimLine2 = new THREE.Line(dimGeometry2, dimMaterial);
+            cardboardGroup.add(dimLine2);
+
             // Tekst
             const textGeometry = new THREE.TextGeometry(distance, {
                 font: font,
-                size: 5,
+                size: 7,
                 height: 0.1,
                 curveSegments: 12,
             });
             textGeometry.computeBoundingBox();
             const textWidth = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x;
             const textHeight = textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y
+
             const textMesh = new THREE.Mesh(textGeometry, textMaterial);
             textMesh.position.set(xOffset - textHeight - 3, yOffset, midPos - textWidth / 2);
             textMesh.rotation.z = -Math.PI / 2;
             textMesh.rotation.x = -Math.PI / 2;
             cardboardGroup.add(textMesh);
+
+            const textMesh2 = new THREE.Mesh(textGeometry, textMaterial);
+            textMesh2.position.set(xOffsetOpposite, yOffset + 3, midPos - textWidth / 2);
+            textMesh2.rotation.y = -Math.PI / 2;
+            cardboardGroup.add(textMesh2);
         }
     });
 }
@@ -423,7 +515,6 @@ function renderBoxes(cardboard1, cardboard2, notchesPositions1, notchesPositions
 
             const geometry = new THREE.BoxGeometry(w, h, d);
             let material = new THREE.MeshLambertMaterial({ color: 0x326ecf, opacity: 0.6, transparent: true });
-            // if not fit use f8312f
             if (widthFree < w || depthFree < d || heightFree < h) {
                 material = new THREE.MeshLambertMaterial({ color: 0xf8312f, opacity: 0.6, transparent: true });
             }
@@ -568,3 +659,19 @@ window.onload = function () {
         scene.background = new THREE.Color(background);
     });
 };
+
+document.getElementById("toggle-camera").addEventListener("click", () => {
+    if (isOrtho) {
+        // wracamy do perspektywicznej
+        perspectiveCamera.position.copy(camera.position);
+        perspectiveCamera.quaternion.copy(camera.quaternion);
+        camera = perspectiveCamera;
+        isOrtho = false;
+    } else {
+        // przełącz na ortho
+        orthoCamera.position.copy(camera.position);
+        orthoCamera.quaternion.copy(camera.quaternion);
+        camera = orthoCamera;
+        isOrtho = true;
+    }
+});

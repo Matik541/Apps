@@ -9,9 +9,13 @@
     <title>Projektant Kratownicy Kartonowej</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
+        :root {
+            --main-color: #326ecf;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             margin: 0;
@@ -55,9 +59,45 @@
 
         .notch-grid-container {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 1rem;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.5rem;
         }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.4rem 0.8rem;
+            border-radius: 9999px;
+            background-color: #f3f4f6;
+            border: 1px solid #d1d5db;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chip:hover {
+            background-color: #e5e7eb;
+        }
+
+        .chip input {
+            display: none;
+        }
+
+        .chip-checked {
+            background-color: var(--main-color);
+            border: var(--main-color);
+            color: white;
+        }
+
+        .chip-checked:hover {
+            background-color: #374151;
+            border: var(--main-color);
+            color: white;
+        }
+
 
         .view-controls {
             color: gray;
@@ -76,20 +116,20 @@
             margin: 0 10px;
         }
 
-        .view-controls > div {
+        .view-controls>div {
             display: flex;
             flex-direction: column;
             gap: 5px;
         }
 
         .view-button {
-            padding: 5px 10px;
-            font-size: 12px;
+            box-sizing: content-box;
+            padding: 10px;
+            height: 24px;
             background-color: #e5e7eb;
             border: 1px solid #d1d5db;
             border-radius: 4px;
             cursor: pointer;
-            text-align: center;
         }
 
 
@@ -109,30 +149,75 @@
 
             <div id="cardboard-panels"></div>
 
+            <div id="filling-settings" class="bg-gray-100 p-4 rounded-xl shadow-sm mt-6">
+                <h2 class="text-lg font-semibold mb-3 text-center">Przykładowe wypełnienie</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Szerokość</label>
+                        <input type="number" id="box-width" class="w-full border rounded px-2 py-1" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Głębokość</label>
+                        <input type="number" id="box-depth" class="w-full border rounded px-2 py-1" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Wysokość</label>
+                        <input type="number" id="box-height" class="w-full border rounded px-2 py-1" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Min. odstęp</label>
+                        <input type="number" id="box-margin" class="w-full border rounded px-2 py-1" value="0">
+                    </div>
+                </div>
+                <button id="add-boxes"
+                    class="mt-4 w-full bg-[color:var(--main-color)] text-white py-2 rounded-md hover:opacity-90">
+                    Dodaj pudełka
+                </button>
+                <button id="clear-boxes"
+                    class="mt-4 w-full bg-[color:var(--main-color)] text-white py-2 rounded-md hover:opacity-90">
+                    Wyczyść pudełka
+                </button>
+            </div>
+
+
             <div class="mt-8 text-center">
                 <p class="text-sm text-gray-500 font-semibold mb-2">Sterowanie kamerą:</p>
-                <ul class="text-xs text-gray-600 list-disc list-inside">
-                    <li><span class="font-bold">Obracanie:</span> Przeciągnij lewym przyciskiem
-                        myszy.</li>
-                    <li><span class="font-bold">Przesuwanie:</span> Przeciągnij prawym przyciskiem
-                        myszy.</li>
-                    <li><span class="font-bold">Przybliżanie/Oddalanie:</span> Użyj kółka myszy.
-                    </li>
-                </ul>
+                <div class="text-xs text-gray-600 list-inside flex flex-col">
+                    <div>
+                        <span class="material-icons">3d_rotation</span>
+                        <span class="font-bold">Obracanie:</span> Przeciągnij lewym przyciskiem myszy.
+                    </div>
+                    <div>
+                        <span class="material-icons">open_with</span>
+                        <span class="font-bold">Przesuwanie:</span> Przeciągnij prawym przyciskiem myszy.
+                    </div>
+                    <div>
+                        <span class="material-icons">search</span>
+                        <span class="font-bold">Przybliżanie/Oddalanie:</span> Użyj kółka myszy.
+                    </div>
+                </div>
             </div>
         </div>
 
         <div id="render-container" class="rounded-r-lg overflow-hidden">
             <div class="view-controls">
                 <div id="view-controls">
-                    <button class="view-button font-bold" data-view="top">⬇️</button>
-                    <button class="view-button font-bold" data-view="reset">🔄️</button>
+                    <button class="view-button font-bold" data-view="top">
+                        <span class="material-icons">download</span>
+                    </button>
+                    <button class="view-button font-bold" data-view="reset">
+                        <span class="material-icons">restart_alt</span>
+                    </button>
                 </div>
                 <hr>
                 <div>
-                    <input id="view-background" class="view-button font-bold" type="color"></input>
-                    <button id="view-screenshot" class="view-button font-bold">🎦</button>
+                    <input id="view-background" class="view-button font-bold" type="color" value="#d1d5db"
+                        style="padding: 0px;">
+                    <button id="view-screenshot" class="view-button font-bold">
+                        <span class="material-icons">photo_camera</span>
+                    </button>
                 </div>
+
             </div>
         </div>
     </div>

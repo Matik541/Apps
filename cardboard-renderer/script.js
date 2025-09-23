@@ -46,7 +46,7 @@ function init() {
     scene.background = new THREE.Color(0xd1d5db);
 
     camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(200, 200, 200);
+    camera.position.set(-250, 300, 250);
     camera.lookAt(target); // Kamera patrzy na punkt docelowy
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -127,19 +127,26 @@ function updateNotchPanel(axisIndex) {
     }
 
     for (let i = 0; i < cardboard.tooths.length + 1; i++) {
-        const checkboxDiv = document.createElement('div');
-        checkboxDiv.className = 'flex items-center space-x-2';
-        checkboxDiv.innerHTML = `
-                    <input type="checkbox" id="cb-${axisIndex}-${i}" class="rounded"  
-                            ${selectedNotches[`axis${axisIndex}`][selectedId][i] ? 'checked' : ''}>
-                    <label for="cb-${axisIndex}-${i}" class="text-xs text-gray-700"> #${i + 1}</label>
-                `;
-        checkboxDiv.querySelector('input').addEventListener('change', (e) => {
+        const chip = document.createElement('label');
+        chip.className = 'chip';
+        chip.innerHTML = `
+        <input type="checkbox" id="cb-${axisIndex}-${i}"
+            ${selectedNotches[`axis${axisIndex}`][selectedId][i] ? 'checked' : ''}>
+        #${i + 1}
+    `;
+
+        const input = chip.querySelector('input');
+        if (input.checked) chip.classList.add('chip-checked');
+
+        input.addEventListener('change', (e) => {
             selectedNotches[`axis${axisIndex}`][selectedId][i] = e.target.checked;
+            chip.classList.toggle('chip-checked', e.target.checked);
             renderLattice();
         });
-        notchesContainer.appendChild(checkboxDiv);
+
+        notchesContainer.appendChild(chip);
     }
+
 }
 
 function getNotchPositions(cardboard) {
@@ -250,6 +257,7 @@ function renderLattice() {
     });
 
     renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPositions2);
+    renderBoxes(cardboard1, cardboard2, notchesPositions1, notchesPositions2);
 }
 
 function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPositions2) {
@@ -379,6 +387,59 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+let boxes = [];
+
+document.getElementById('add-boxes').addEventListener('click', () => {
+    const w = parseFloat(document.getElementById('box-width').value);
+    const d = parseFloat(document.getElementById('box-depth').value);
+    const h = parseFloat(document.getElementById('box-height').value);
+    const m = parseFloat(document.getElementById('box-margin').value);
+
+    boxes = [{ w, d, h, m }];
+    renderLattice();
+});
+
+document.getElementById('clear-boxes').addEventListener('click', () => {
+    boxes = [];
+    renderLattice();
+});
+
+function renderBoxes(cardboard1, cardboard2, notchesPositions1, notchesPositions2) {
+    if (boxes.length === 0) return;
+
+    const { w, d, h, m } = boxes[0];
+
+    // iteracja po kieszeniach
+    const selected1 = selectedNotches.axis1[cardboard1.id];
+    const selected2 = selectedNotches.axis2[cardboard2.id];
+    const active1 = notchesPositions1.filter((_, i) => selected1[i]);
+    const active2 = notchesPositions2.filter((_, i) => selected2[i]);
+
+    for (let i = 0; i < active1.length - 1; i++) {
+        for (let j = 0; j < active2.length - 1; j++) {
+            const widthFree = Math.abs(active1[i + 1] - active1[i]) - THICKNESS - 2 * m;
+            const depthFree = Math.abs(active2[j + 1] - active2[j]) - THICKNESS - 2 * m;
+            const heightFree = Math.min(cardboard1.depth, cardboard2.depth) - 2 * m;
+
+            const geometry = new THREE.BoxGeometry(w, h, d);
+            let material = new THREE.MeshLambertMaterial({ color: 0x326ecf, opacity: 0.6, transparent: true });
+            // if not fit use f8312f
+            if (widthFree < w || depthFree < d || heightFree < h) {
+                material = new THREE.MeshLambertMaterial({ color: 0xf8312f, opacity: 0.6, transparent: true });
+            }
+
+            const box = new THREE.Mesh(geometry, material);
+
+            const centerX = (active1[i] + active1[i + 1]) / 2;
+            const centerZ = (active2[j] + active2[j + 1]) / 2;
+
+            box.position.set(centerX, 0, centerZ);
+            cardboardGroup.add(box);
+        }
+    }
+}
+
+
 function onMouseDown(e) {
     if (e.button === 0) {
         isRotating = true;
@@ -460,14 +521,9 @@ window.addEventListener('resize', () => {
 function setCameraView(view) {
     const views = {
         top: new THREE.Vector3(0, 300, 0),
-        front: new THREE.Vector3(0, 50, 300),
-        side: new THREE.Vector3(300, 50, 0),
-        reset: new THREE.Vector3(-200, 200, 200)
+        reset: new THREE.Vector3(-250, 300, 250)
     };
 
-
-
-    // Zresetuj target, ponieważ widoki są ustawione względem (0,0,0)
     target.set(0, 0, 0);
 
     camera.position.copy(views[view]);

@@ -181,6 +181,10 @@
                 <label for="pcbImageFile" class="file-input-label">Wybierz obraz PCB:</label>
                 <input type="file" id="pcbImageFile" class="file-input" accept="image/*">
             </div>
+            <div>
+                <label for="ledFile" class="file-input-label" title="Wklejenie zaznaczy wspomniane elementy na liście">Wklej komponenty z Impulsa:</label>
+                <input type="file" id="impulsList" class="file-input">
+            </div>
         </div>
 
         <div class="controls">
@@ -214,7 +218,9 @@
                 Kolor:
                 <input type="color" id="fontColor" value="#ff0000">
             </label>
-            <button id="markLEDs">Zaznacz LEDy / elementy jednokierunkowe</button>
+            <button id="markLEDs">Zaznacz LEDy</button>
+            <button id="markDirectionals">Zaznacz jednokierunkowe</button>
+            <button id="resetPositions">Resetuj pozycje</button>
         </div>
 
         <div class="main-content">
@@ -236,6 +242,7 @@
                             <th data-sort="x">X</th>
                             <th data-sort="y">Y</th>
                             <th data-sort="rotation">Obrót</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody id="componentList">
@@ -245,6 +252,13 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <div id="impulsPopup">
+        <div class="popup-content">
+            <h2>Impuls</h2>
+            <textarea id="impulsData" placeholder="[Sygnatura] Index...    C1 ..."></textarea>
         </div>
     </div>
 
@@ -259,13 +273,14 @@
                         <option value=";">Średnik (;)</option>
                         <option value="\t">Tabulacja</option>
                         <option value=" ">Spacja</option>
+                        <option value="fixed">Stałe pozycje</option>
                     </select>
                 </label>
                 <label>
                     Wiersz nagłówków:
                     <input type="number" id="headerRow" min="1" value="1">
                 </label>
-                <button id="updatePreview">Aktualizuj podgląd</button>
+                <!-- Add fixed selector, allow user to choose position of separator and remove it, dynamicli updatking a view -->
             </div>
             <div class="popup-preview">
                 <table id="previewTable" class="component-table"></table>
@@ -305,6 +320,7 @@
             pickPlaceFile: document.getElementById('pickPlaceFile'),
             pcbImageFile: document.getElementById('pcbImageFile'),
             pcbImage: document.getElementById('pcbImage'),
+            impulsList: document.getElementById('impulsList'),
             overlayCanvas: document.getElementById('overlayCanvas'),
             componentList: document.getElementById('componentList'),
             layerFilters: document.getElementById('layerFilters'),
@@ -315,10 +331,12 @@
             fontWeight: document.getElementById('fontWeight'),
             fontColor: document.getElementById('fontColor'),
             markLEDs: document.getElementById('markLEDs'),
+            markLEDs: document.getElementById('markDirectionals'),
+            resetPositions: document.getElementById('resetPositions'),
             configPopup: document.getElementById('configPopup'),
+            impulsPopup: document.getElementById('impulsPopup'),
             separatorSelect: document.getElementById('separatorSelect'),
             headerRow: document.getElementById('headerRow'),
-            updatePreview: document.getElementById('updatePreview'),
             previewTable: document.getElementById('previewTable'),
             columnMapping: document.getElementById('columnMapping'),
             confirmConfig: document.getElementById('confirmConfig')
@@ -335,7 +353,11 @@
         let fiducials = {};
 
         function parsePickPlace(data, separator, headerRow, mapping) {
-            const lines = data.trim().split('\n');
+            if (headerRow == "fixed") {
+                
+            }
+
+            const lines = data.split('\n');
             const headerLine = lines[headerRow - 1];
             const headers = headerLine.split(separator).map(h => h.trim().replace(/"/g, ''));
             const dataLines = lines.slice(headerRow);
@@ -457,8 +479,7 @@
             `).join('');
             elements.layerFilters.innerHTML = layerFiltersHTML;
 
-            const filteredComponents = components.filter(c => c.show);
-            filteredComponents.forEach(comp => {
+            components.forEach(comp => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${comp.designator}</td>
@@ -466,6 +487,9 @@
                     <td>${comp.x.toFixed(2)}</td>
                     <td>${comp.y.toFixed(2)}</td>
                     <td>${comp.rotation.toFixed(1)}</td>
+                    <td>
+                        <input type="checkbox" data-designator="${comp.designator}" class="component-show-checkbox" checked>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -499,10 +523,21 @@
             }
         });
         
+        elements.impulsList.addEventListener('click', (e) => {
+            e.preventDefault();
+
+
+        });
+
         // Popup configuration logic
         function showConfigPopup(data) {
             elements.configPopup.style.display = 'flex';
             updatePreviewTable(data, elements.separatorSelect.value, elements.headerRow.value);
+        }
+
+        function showImpulsPopup(impuls) {
+            elements.impulsPopup.style.display = 'flex';
+            updateImpulsPopup(impuls);
         }
 
         function updatePreviewTable(data, separator, headerRow) {
@@ -539,7 +574,11 @@
             }
         }
 
-        elements.updatePreview.addEventListener('click', () => {
+        elements.separatorSelect.addEventListener('change', () => {
+            updatePreviewTable(rawPickPlaceData, elements.separatorSelect.value, elements.headerRow.value);
+        });
+
+        elements.headerRow.addEventListener('change', () => {
             updatePreviewTable(rawPickPlaceData, elements.separatorSelect.value, elements.headerRow.value);
         });
 
@@ -560,7 +599,7 @@
         });
 
         elements.markLEDs.addEventListener('click', () => {
-            const keywords = ['led', 'unidirect', 'uni-direct', 'direct', 'jednokier', 'diode'];
+            const keywords = ['led', ' unidirect', ' uni-direct', ' direct', ' jednokier', 'diode'];
             components.forEach(comp => {
                 comp.show = keywords.some(keyword => comp.designator.toLowerCase().includes(keyword));
             });

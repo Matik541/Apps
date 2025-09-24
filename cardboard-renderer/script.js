@@ -28,6 +28,10 @@ const cardboardData = [
 ]
 
 async function fetchCardboardData() {
+    if (url === undefined) {
+        console.error("URL not defined. Create a secret.js file with the URL variable.");
+        return;
+    }
     try {
         const response = await fetch(url);
         const data = await response.json();
@@ -51,12 +55,12 @@ let selectedNotches = {
     axis2: {}
 };
 
-const THICKNESS = cardboardData[0].thickness ?? 3;
+let THICKNESS = cardboardData[0].thickness ?? 3;
 
 function init() {
     selectedCardboards = {
-        axis1: cardboardData[0].id ,
-        axis2: cardboardData[0].id 
+        axis1: cardboardData[0].id,
+        axis2: cardboardData[0].id
     };
 
     // Kamera perspektywiczna
@@ -94,7 +98,7 @@ function init() {
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     container.appendChild(renderer.domElement);
-    
+
     // add light
     const ambientLight = new THREE.AmbientLight(0xffffff); // soft white light
     scene.add(ambientLight);
@@ -247,6 +251,18 @@ function createCardboardMesh(cardboard, isHorizontal) {
     return geometry;
 }
 
+function hsl0x(h, s, l) {
+  l /= 100;
+  const a = s * Math.min(l, 1 - l) / 100;
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');   // convert to Hex and prefix "0" if needed
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+
 function renderLattice() {
     cardboardGroup.children.forEach(mesh => mesh.geometry.dispose());
     cardboardGroup.clear();
@@ -264,7 +280,7 @@ function renderLattice() {
         if (isChecked) {
             const notchPos = notchesPositions2[i];
             const geometry = createCardboardMesh(cardboard1, true);
-            const material = new THREE.MeshLambertMaterial({ color: 0xddb888 });
+            const material = new THREE.MeshLambertMaterial({ color: hsl0x(34, 56, 60 + i) });
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(0, 0, notchPos);
 
@@ -508,7 +524,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             const textHeight = textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y
 
             const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-            textMesh.position.set(xOffset - textHeight - 3, yOffset-0.25, midPos - textWidth / 2);
+            textMesh.position.set(xOffset - textHeight - 3, yOffset - 0.25, midPos - textWidth / 2);
             textMesh.rotation.z = -Math.PI / 2;
             textMesh.rotation.x = -Math.PI / 2;
             cardboardGroup.add(textMesh);

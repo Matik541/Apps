@@ -1,3 +1,7 @@
+import * as THREE from "three"
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+
 const container = document.getElementById('render-container');
 let scene, camera, renderer, cardboardGroup;
 let isRotating = false;
@@ -11,8 +15,17 @@ let isOrtho = false;
 
 
 
-const cardboardData = []
-const TEXT_HEIGHT = 10;
+const cardboardData = [
+    {
+        "id": "Wymyślony karton",
+        "name": "Wymyślony karton",
+        "width": 350,
+        "depth": 200,
+        "tooths": [10, 15, 50, 50, 50, 50, 50, 15, 10],
+        "gap": 3,
+        "margin": 10
+    },
+]
 
 async function fetchCardboardData() {
     try {
@@ -38,12 +51,12 @@ let selectedNotches = {
     axis2: {}
 };
 
-const THICKNESS = 3;
+const THICKNESS = cardboardData[0].thickness ?? 3;
 
 function init() {
     selectedCardboards = {
-        axis1: cardboardData.length > 0 ? cardboardData[0].id : null,
-        axis2: cardboardData.length > 1 ? cardboardData[1].id : null
+        axis1: cardboardData[0].id ,
+        axis2: cardboardData[0].id 
     };
 
     // Kamera perspektywiczna
@@ -71,7 +84,7 @@ function init() {
 
 
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xd1d5db);
+    scene.background = new THREE.Color(0xffffff);
 
     camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
     camera.position.set(-250, 300, 250);
@@ -81,12 +94,14 @@ function init() {
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     container.appendChild(renderer.domElement);
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    
+    // add light
+    const ambientLight = new THREE.AmbientLight(0xffffff); // soft white light
     scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(1, 1, 1).normalize();
     scene.add(directionalLight);
+
 
     cardboardGroup = new THREE.Group();
     scene.add(cardboardGroup);
@@ -205,7 +220,6 @@ function createCardboardMesh(cardboard, isHorizontal) {
     const notchHeight = cardboard.depth / 2;
     const notchsX = getNotchPositions(cardboard);
 
-    console.log(notchsX)
     for (let notchX of notchsX) {
         const notchShape = new THREE.Path();
         if (isHorizontal) {
@@ -250,7 +264,7 @@ function renderLattice() {
         if (isChecked) {
             const notchPos = notchesPositions2[i];
             const geometry = createCardboardMesh(cardboard1, true);
-            const material = new THREE.MeshLambertMaterial({ color: 0xC08F4F });
+            const material = new THREE.MeshLambertMaterial({ color: 0xddb888 });
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(0, 0, notchPos);
 
@@ -269,7 +283,7 @@ function renderLattice() {
         if (isChecked) {
             const notchPos = notchesPositions1[i];
             const geometry = createCardboardMesh(cardboard2, false);
-            const material = new THREE.MeshLambertMaterial({ color: 0xCD9F61 });
+            const material = new THREE.MeshLambertMaterial({ color: 0xd4ac77 });
             const mesh = new THREE.Mesh(geometry, material);
             mesh.rotation.y = Math.PI / 2;
             mesh.position.set(notchPos, 0, 0);
@@ -285,13 +299,14 @@ function renderLattice() {
     });
 
     renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPositions2);
-    renderBoxes(cardboard1, cardboard2, notchesPositions1, notchesPositions2);
+    renderfiller(cardboard1, cardboard2, notchesPositions1, notchesPositions2);
 }
 
 function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPositions2) {
+    const outlineMaterial = new THREE.MeshBasicMaterial({ color: scene.background });
     const dimMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 1 });
     const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-    const loader = new THREE.FontLoader();
+    const loader = new FontLoader();
 
     loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
 
@@ -361,12 +376,25 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             cardboardGroup.add(dimLine2);
 
             // Tekst
-            const textGeometry = new THREE.TextGeometry(distance, {
+            const textGeometry = new TextGeometry(distance, {
                 font: font,
                 size: 7,
                 height: 0.1,
                 curveSegments: 12,
+                depth: 0.5,
+
             });
+            const outlineGeometry = new TextGeometry(distance, {
+                font: font,
+                size: 7,
+                height: 0.25,
+                curveSegments: 12,
+                depth: .1,
+                bevelEnabled: true,
+                bevelSize: 0.75,
+                bevelThickness: 0.1,
+            })
+
             textGeometry.computeBoundingBox();
             const textWidth = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x;
             const textHeight = textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y;
@@ -376,9 +404,18 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             textMesh.rotation.x = -Math.PI / 2;
             cardboardGroup.add(textMesh);
 
+            const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial);
+            outlineMesh.position.set(midPos - textWidth / 2, yOffset + 0.25, zOffset + textHeight + 3);
+            outlineMesh.rotation.x = -Math.PI / 2;
+            cardboardGroup.add(outlineMesh);
+
             const textMesh2 = new THREE.Mesh(textGeometry, textMaterial);
             textMesh2.position.set(midPos - textWidth / 2, yOffset + 3, zOffsetOpposite);
             cardboardGroup.add(textMesh2);
+
+            const outlineMesh2 = new THREE.Mesh(outlineGeometry, outlineMaterial);
+            outlineMesh2.position.set(midPos - textWidth / 2, yOffset + 3, zOffsetOpposite + 0.25);
+            cardboardGroup.add(outlineMesh2);
         }
 
 
@@ -448,26 +485,49 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             cardboardGroup.add(dimLine2);
 
             // Tekst
-            const textGeometry = new THREE.TextGeometry(distance, {
+            const textGeometry = new TextGeometry(distance, {
                 font: font,
                 size: 7,
                 height: 0.1,
                 curveSegments: 12,
+                depth: 0.5
+
             });
+            const outlineGeometry = new TextGeometry(distance, {
+                font: font,
+                size: 7,
+                height: 0.25,
+                curveSegments: 12,
+                depth: .1,
+                bevelEnabled: true,
+                bevelSize: 0.75,
+                bevelThickness: 0.1,
+            })
             textGeometry.computeBoundingBox();
             const textWidth = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x;
             const textHeight = textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y
 
             const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-            textMesh.position.set(xOffset - textHeight - 3, yOffset, midPos - textWidth / 2);
+            textMesh.position.set(xOffset - textHeight - 3, yOffset-0.25, midPos - textWidth / 2);
             textMesh.rotation.z = -Math.PI / 2;
             textMesh.rotation.x = -Math.PI / 2;
             cardboardGroup.add(textMesh);
+
+            const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial);
+            outlineMesh.position.set(xOffset - textHeight - 3, yOffset, midPos - textWidth / 2);
+            outlineMesh.rotation.z = -Math.PI / 2;
+            outlineMesh.rotation.x = -Math.PI / 2;
+            cardboardGroup.add(outlineMesh);
 
             const textMesh2 = new THREE.Mesh(textGeometry, textMaterial);
             textMesh2.position.set(xOffsetOpposite, yOffset + 3, midPos - textWidth / 2);
             textMesh2.rotation.y = -Math.PI / 2;
             cardboardGroup.add(textMesh2);
+
+            const outlineMesh2 = new THREE.Mesh(outlineGeometry, outlineMaterial);
+            outlineMesh2.position.set(xOffsetOpposite - 0.25, yOffset + 3, midPos - textWidth / 2);
+            outlineMesh2.rotation.y = -Math.PI / 2;
+            cardboardGroup.add(outlineMesh2);
         }
     });
 }
@@ -479,27 +539,27 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-let boxes = [];
+let filler = [];
 
-document.getElementById('add-boxes').addEventListener('click', () => {
-    const w = parseFloat(document.getElementById('box-width').value);
-    const d = parseFloat(document.getElementById('box-depth').value);
-    const h = parseFloat(document.getElementById('box-height').value);
-    const m = parseFloat(document.getElementById('box-margin').value);
+document.getElementById('add-filler').addEventListener('click', () => {
+    const w = parseFloat(document.getElementById('filler-width').value);
+    const d = parseFloat(document.getElementById('filler-depth').value);
+    const h = parseFloat(document.getElementById('filler-height').value);
+    const m = parseFloat(document.getElementById('filler-margin').value);
 
-    boxes = [{ w, d, h, m }];
+    filler = [{ w, d, h, m }];
     renderLattice();
 });
 
-document.getElementById('clear-boxes').addEventListener('click', () => {
-    boxes = [];
+document.getElementById('clear-filler').addEventListener('click', () => {
+    filler = [];
     renderLattice();
 });
 
-function renderBoxes(cardboard1, cardboard2, notchesPositions1, notchesPositions2) {
-    if (boxes.length === 0) return;
+function renderfiller(cardboard1, cardboard2, notchesPositions1, notchesPositions2) {
+    if (filler.length === 0) return;
 
-    const { w, d, h, m } = boxes[0];
+    const { w, d, h, m } = filler[0];
 
     // iteracja po kieszeniach
     const selected1 = selectedNotches.axis1[cardboard1.id];
@@ -511,7 +571,7 @@ function renderBoxes(cardboard1, cardboard2, notchesPositions1, notchesPositions
         for (let j = 0; j < active2.length - 1; j++) {
             const widthFree = Math.abs(active1[i + 1] - active1[i]) - THICKNESS - 2 * m;
             const depthFree = Math.abs(active2[j + 1] - active2[j]) - THICKNESS - 2 * m;
-            const heightFree = Math.min(cardboard1.depth, cardboard2.depth) - 2 * m;
+            const heightFree = Math.min(cardboard1.depth, cardboard2.depth);
 
             const geometry = new THREE.BoxGeometry(w, h, d);
             let material = new THREE.MeshLambertMaterial({ color: 0x326ecf, opacity: 0.6, transparent: true });

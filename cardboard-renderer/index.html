@@ -9,7 +9,20 @@
     <title>Projektant Kratownicy Kartonowej</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script type="importmap">
+        {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three/examples/jsm/"
+        }
+        }
+    </script>
+    <script src="secret.js"></script>
+    <script type="module" src="script.js"></script>
+
+
+
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         :root {
@@ -154,28 +167,28 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Szerokość</label>
-                        <input type="number" id="box-width" class="w-full border rounded px-2 py-1" value="0">
+                        <input type="number" id="filler-width" class="w-full border rounded px-2 py-1" value="0">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Głębokość</label>
-                        <input type="number" id="box-depth" class="w-full border rounded px-2 py-1" value="0">
+                        <input type="number" id="filler-depth" class="w-full border rounded px-2 py-1" value="0">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Wysokość</label>
-                        <input type="number" id="box-height" class="w-full border rounded px-2 py-1" value="0">
+                        <input type="number" id="filler-height" class="w-full border rounded px-2 py-1" value="0">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Min. odstęp</label>
-                        <input type="number" id="box-margin" class="w-full border rounded px-2 py-1" value="0">
+                        <input type="number" id="filler-margin" class="w-full border rounded px-2 py-1" value="0">
                     </div>
                 </div>
-                <button id="add-boxes"
+                <button id="add-filler"
                     class="mt-4 w-full bg-[color:var(--main-color)] text-white py-2 rounded-md hover:opacity-90">
-                    Dodaj pudełka
+                    Dodaj wypełnienie
                 </button>
-                <button id="clear-boxes"
+                <button id="clear-filler"
                     class="mt-4 w-full bg-[color:var(--main-color)] text-white py-2 rounded-md hover:opacity-90">
-                    Wyczyść pudełka
+                    Wyczyść wypełnienie
                 </button>
             </div>
 
@@ -202,6 +215,10 @@
                         </span>
                     </div>
                 </div>
+
+                <p>
+                    Created by <a href="https://github.com/Matik541/">Mateusz Kowalski</a>
+                </p>
             </div>
         </div>
 
@@ -217,7 +234,7 @@
                 </div>
                 <hr>
                 <div>
-                    <input id="view-background" class="view-button font-bold" type="color" value="#d1d5db"
+                    <input id="view-background" class="view-button font-bold" type="color" value="#ffffff"
                         style="padding: 0px;">
                     <button id="view-screenshot" class="view-button font-bold">
                         <span class="material-icons">photo_camera</span>
@@ -227,14 +244,9 @@
                     </button>
 
                 </div>
-
             </div>
         </div>
     </div>
-
-
-    <script src="secret.js"></script>
-    <script src="script.js"></script>
 </body>
 
 </html>

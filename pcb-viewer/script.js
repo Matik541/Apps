@@ -228,6 +228,7 @@ elements.pickPlaceInput.addEventListener('change', (event) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             const content = e.target.result;
+            console.log(content);
             const lines = content.split('\n');
 
             componentsData = [];
@@ -239,6 +240,7 @@ elements.pickPlaceInput.addEventListener('change', (event) => {
             let headers = [];
 
             lines.forEach(line => {
+                console.log(line)
                 line = line.trim();
                 if (line.startsWith('"Designator"')) {
                     headers = line.split('","').map(h => h.replace(/"/g, '').trim());

@@ -421,7 +421,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             cardboardGroup.add(textMesh);
 
             const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial);
-            outlineMesh.position.set(midPos - textWidth / 2, yOffset + 0.25, zOffset + textHeight + 3);
+            outlineMesh.position.set(midPos - textWidth / 2, yOffset + 0.1, zOffset + textHeight + 3);
             outlineMesh.rotation.x = -Math.PI / 2;
             cardboardGroup.add(outlineMesh);
 
@@ -430,7 +430,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             cardboardGroup.add(textMesh2);
 
             const outlineMesh2 = new THREE.Mesh(outlineGeometry, outlineMaterial);
-            outlineMesh2.position.set(midPos - textWidth / 2, yOffset + 3, zOffsetOpposite + 0.25);
+            outlineMesh2.position.set(midPos - textWidth / 2, yOffset + 3, zOffsetOpposite + 0.1);
             cardboardGroup.add(outlineMesh2);
         }
 
@@ -524,7 +524,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             const textHeight = textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y
 
             const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-            textMesh.position.set(xOffset - textHeight - 3, yOffset - 0.25, midPos - textWidth / 2);
+            textMesh.position.set(xOffset - textHeight - 3, yOffset - 0.1, midPos - textWidth / 2);
             textMesh.rotation.z = -Math.PI / 2;
             textMesh.rotation.x = -Math.PI / 2;
             cardboardGroup.add(textMesh);
@@ -541,7 +541,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             cardboardGroup.add(textMesh2);
 
             const outlineMesh2 = new THREE.Mesh(outlineGeometry, outlineMaterial);
-            outlineMesh2.position.set(xOffsetOpposite - 0.25, yOffset + 3, midPos - textWidth / 2);
+            outlineMesh2.position.set(xOffsetOpposite - 0.1, yOffset + 3, midPos - textWidth / 2);
             outlineMesh2.rotation.y = -Math.PI / 2;
             cardboardGroup.add(outlineMesh2);
         }

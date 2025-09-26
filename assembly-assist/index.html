@@ -1,673 +1,136 @@
 <!DOCTYPE html>
 <html lang="pl">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PCB Viewer - Nowy Projekt</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f7f9;
-            color: #333;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            max-width: 1400px;
-            margin: auto;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .file-inputs,
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: center;
-            padding: 20px;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .file-input-label {
-            font-weight: bold;
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        .file-input {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-        .main-content {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .viewer-section {
-            flex: 2;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            position: relative;
-        }
-
-        .image-container {
-            position: relative;
-            overflow: hidden;
-            background-color: #e9ecef;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 500px;
-        }
-
-        #pcbImage {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            display: block;
-        }
-
-        #overlayCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            cursor: move;
-        }
-
-        .list-section {
-            flex: 1;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            overflow-y: auto;
-            max-height: 80vh;
-        }
-
-        .component-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9em;
-        }
-
-        .component-table th,
-        .component-table td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        .component-table th {
-            background-color: #f8f9fa;
-            cursor: pointer;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        .popup {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .popup-content {
-            background: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
-            width: 90%;
-            max-width: 800px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .popup-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .popup-preview {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-bottom: 20px;
-        }
-
-        @media (min-width: 1024px) {
-            .main-content {
-                flex-direction: row;
-            }
-        }
-    </style>
-</head>
-
+    <title>Wizualizator Pick&Place</title>
+    <link rel="stylesheet" href="style.css"> </head>
 <body>
-    <div class="container">
-        <h1 class="header">Wizualizator PCB</h1>
 
-        <div class="file-inputs">
-            <div>
-                <label for="pickPlaceFile" class="file-input-label">Wybierz plik Pick & Place:</label>
-                <input type="file" id="pickPlaceFile" class="file-input" accept=".csv,.txt">
-            </div>
-            <div>
-                <label for="pcbImageFile" class="file-input-label">Wybierz obraz PCB:</label>
-                <input type="file" id="pcbImageFile" class="file-input" accept="image/*">
-            </div>
-            <div>
-                <label for="ledFile" class="file-input-label" title="Wklejenie zaznaczy wspomniane elementy na liście">Wklej komponenty z Impulsa:</label>
-                <input type="file" id="impulsList" class="file-input">
-            </div>
-        </div>
+    <div id="app">
+        <aside id="controls">
+            <h2>⚙️ Kontrola Danych i Ustawienia</h2>
 
-        <div class="controls">
-            <label>
-                Odbij w poziomie (X):
-                <input type="checkbox" id="mirrorX">
-            </label>
-            <label>
-                Odbij w pionie (Y):
-                <input type="checkbox" id="mirrorY">
-            </label>
-            <label>
-                Widok:
-                <select id="viewMode">
-                    <option value="points">Kropki</option>
-                    <option value="names">Designatory</option>
-                </select>
-            </label>
-            <label>
-                Rozmiar czcionki:
-                <input type="range" id="fontSize" min="8" max="32" value="16">
-            </label>
-            <label>
-                Grubość czcionki:
-                <select id="fontWeight">
-                    <option value="normal">Normalna</option>
-                    <option value="bold">Pogrubiona</option>
-                </select>
-            </label>
-            <label>
-                Kolor:
-                <input type="color" id="fontColor" value="#ff0000">
-            </label>
-            <button id="markLEDs">Zaznacz LEDy</button>
-            <button id="markDirectionals">Zaznacz jednokierunkowe</button>
-            <button id="resetPositions">Resetuj pozycje</button>
-        </div>
+            <section class="card">
+                <h3>Ładowanie Danych P&P</h3>
+                <textarea id="data-input" rows="10" placeholder="Wklej dane lub załaduj plik..."></textarea>
+                <input type="file" id="file-input" accept=".txt,.csv">
+            </section>
 
-        <div class="main-content">
-            <div class="viewer-section">
-                <div class="image-container">
-                    <img id="pcbImage" alt="Wizualizacja PCB">
-                    <canvas id="overlayCanvas"></canvas>
-                </div>
-            </div>
-
-            <div class="list-section">
-                <h3>Lista Komponentów</h3>
-                <div id="layerFilters"></div>
-                <table class="component-table">
-                    <thead>
-                        <tr>
-                            <th data-sort="designator">Designator</th>
-                            <th data-sort="layer">Warstwa</th>
-                            <th data-sort="x">X</th>
-                            <th data-sort="y">Y</th>
-                            <th data-sort="rotation">Obrót</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="componentList">
-                        <tr>
-                            <td colspan="5" style="text-align: center;">Wczytaj plik Pick & Place...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div id="impulsPopup">
-        <div class="popup-content">
-            <h2>Impuls</h2>
-            <textarea id="impulsData" placeholder="[Sygnatura] Index...    C1 ..."></textarea>
-        </div>
-    </div>
-
-    <div id="configPopup" class="popup">
-        <div class="popup-content">
-            <h2>Konfiguracja pliku Pick & Place</h2>
-            <p>Dopasuj parametry, aby poprawnie wczytać dane.</p>
-            <div class="popup-controls">
-                <label>Separator:
-                    <select id="separatorSelect">
+            <section class="card">
+                <h3>Opcje Parsowania</h3>
+                <div class="input-group">
+                    <label for="separator-select">Separator:</label>
+                    <select id="separator-select">
+                        <option value="auto">Auto</option>
+                        <option value="CVS">CSV (z cudzysłowami)</option>
+                        <option value="tab">Tabulator (\t)</option>
                         <option value=",">Przecinek (,)</option>
                         <option value=";">Średnik (;)</option>
-                        <option value="\t">Tabulacja</option>
-                        <option value=" ">Spacja</option>
-                        <option value="fixed">Stałe pozycje</option>
+                        <option value=" ">Spacja ( )</option>
+                        <option value="fixed">Stałe Pozycje (Fixed Width)</option>
                     </select>
-                </label>
-                <label>
-                    Wiersz nagłówków:
-                    <input type="number" id="headerRow" min="1" value="1">
-                </label>
-                <!-- Add fixed selector, allow user to choose position of separator and remove it, dynamicli updatking a view -->
-            </div>
-            <div class="popup-preview">
-                <table id="previewTable" class="component-table"></table>
-            </div>
-            <div id="columnMapping">
-                <h4>Przypisz kolumny:</h4>
-                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                    <div>
-                        <label>Designator:</label>
-                        <select data-col="designator"></select>
+                </div>
+                <div id="fixed-width-container" style="display:none;">
+                    <p>Kliknij w pole poniżej, aby zaznaczyć pozycje kolumn:</p>
+                    <div id="fixed-width-visualizer" class="fixed-width-line"></div>
+                    <input type="hidden" id="fixed-widths" value="0"> 
+                </div>
+                <div class="input-group">
+                    <label for="header-row">Wiersz Nagłówka (0 dla braku):</label>
+                    <input type="number" id="header-row" value="1" min="0">
+                </div>
+            </section>
+            
+            <section class="card">
+                <h3>Podgląd Parsowanych Danych:</h3>
+                <div id="data-preview" class="preview-table"></div>
+            </section>
+
+            <section class="card">
+                <h3>Mapowanie Kolumn</h3>
+                <div id="column-mapping">
+                    <p>Załaduj dane, aby zmapować kolumny.</p>
+                </div>
+            </section>
+
+            <section class="card">
+                <h3>Dane Uzupełniające (Impuls)</h3>
+                <textarea id="impuls-data-input" rows="5" placeholder="Wklej desygnatory Impuls (jeden na linię lub oddzielone spacją/przecinkiem)"></textarea>
+            </section>
+            
+        </aside>
+
+        <main id="main-view">
+            <header id="visualization-header">
+                <h2>Wizualizacja P&P</h2>
+                <div class="header-controls">
+                    <div class="action-buttons">
+                        <button id="copy-canvas-btn" title="Kopiuj obraz do schowka">📋 Kopiuj Obraz</button>
+                        <button id="save-canvas-btn" title="Zapisz obraz jako plik PNG">💾 Zapisz Obraz</button>
                     </div>
-                    <div>
-                        <label>Warstwa:</label>
-                        <select data-col="layer"></select>
+                    <div class="input-group layer-filter-controls">
+                        <label>Filtrowanie Warstw:</label>
+                        <div id="layer-filter-checkboxes">
+                            </div>
                     </div>
-                    <div>
-                        <label>Współrzędna X:</label>
-                        <select data-col="x"></select>
-                    </div>
-                    <div>
-                        <label>Współrzędna Y:</label>
-                        <select data-col="y"></select>
-                    </div>
-                    <div>
-                        <label>Obrót:</label>
-                        <select data-col="rotation"></select>
+                    <div class="input-group">
+                        <label for="display-mode-switch">Tryb Wyświetlania:</label>
+                        <select id="display-mode-switch">
+                            <option value="dot">Tylko Kropka</option>
+                            <option value="designator">Tylko Desygnator (Środek P&P)</option>
+                            <option value="both">Kropka i Desygnator</option>
+                        </select>
                     </div>
                 </div>
+            </header>
+
+            <div id="canvas-container">
+                <canvas id="pick-and-place-canvas"></canvas>
             </div>
-            <br>
-            <button id="confirmConfig">Potwierdź</button>
-        </div>
+            
+            <section id="component-table-section">
+                <h2>Lista Komponentów (Kliknij Nagłówek, aby Sortować)</h2>
+                <div id="component-list-container" class="preview-table">
+                    </div>
+            </section>
+            
+        </main>
+        
+        <aside id="visualization-settings">
+            <section class="card">
+                
+                <h3>Opcje Wizualizacji</h3>
+                <div class="input-group">
+                    <label for="dot-size">Rozmiar Punktu (px):</label>
+                    <input type="number" id="dot-size" min="1" max="20" value="5"> 
+                </div>
+                <div class="input-group">
+                    <label for="font-size">Rozmiar Czcionki (px):</label>
+                    <input type="number" id="font-size" value="10" min="5">
+                </div>
+                
+                <div class="input-group">
+                    <label for="font-weight-select">Grubość Czcionki:</label>
+                    <select id="font-weight-select">
+                        <option value="normal">Normalna</option>
+                        <option value="bold">Pogrubiona</option>
+                        <option value="bolder">Bardzo Gruba</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="font-family-input">Rodzina Czcionek:</label>
+                    <input type="text" id="font-family-input" value="sans-serif" placeholder="np. Arial, 'Courier New'">
+                </div>
+                <div class="input-group">
+                    <label for="color-default">Kolor (Dopasowany):</label>
+                    <input type="color" id="color-default" value="#0000FF">
+                </div>
+                
+                </section>
+        </aside>
+
     </div>
 
-    <script>
-        const elements = {
-            pickPlaceFile: document.getElementById('pickPlaceFile'),
-            pcbImageFile: document.getElementById('pcbImageFile'),
-            pcbImage: document.getElementById('pcbImage'),
-            impulsList: document.getElementById('impulsList'),
-            overlayCanvas: document.getElementById('overlayCanvas'),
-            componentList: document.getElementById('componentList'),
-            layerFilters: document.getElementById('layerFilters'),
-            mirrorX: document.getElementById('mirrorX'),
-            mirrorY: document.getElementById('mirrorY'),
-            viewMode: document.getElementById('viewMode'),
-            fontSize: document.getElementById('fontSize'),
-            fontWeight: document.getElementById('fontWeight'),
-            fontColor: document.getElementById('fontColor'),
-            markLEDs: document.getElementById('markLEDs'),
-            markLEDs: document.getElementById('markDirectionals'),
-            resetPositions: document.getElementById('resetPositions'),
-            configPopup: document.getElementById('configPopup'),
-            impulsPopup: document.getElementById('impulsPopup'),
-            separatorSelect: document.getElementById('separatorSelect'),
-            headerRow: document.getElementById('headerRow'),
-            previewTable: document.getElementById('previewTable'),
-            columnMapping: document.getElementById('columnMapping'),
-            confirmConfig: document.getElementById('confirmConfig')
-        };
-
-        const ctx = elements.overlayCanvas.getContext('2d');
-        let components = [];
-        let rawPickPlaceData = '';
-        let imageLoaded = false;
-        let isDragging = false;
-        let lastMousePos = { x: 0, y: 0 };
-        let offset = { x: 0, y: 0 };
-        let scale = 1;
-        let fiducials = {};
-
-        function parsePickPlace(data, separator, headerRow, mapping) {
-            if (headerRow == "fixed") {
-                
-            }
-
-            const lines = data.split('\n');
-            const headerLine = lines[headerRow - 1];
-            const headers = headerLine.split(separator).map(h => h.trim().replace(/"/g, ''));
-            const dataLines = lines.slice(headerRow);
-
-            const designatorCol = mapping.designator ? headers.indexOf(mapping.designator) : -1;
-            const layerCol = mapping.layer ? headers.indexOf(mapping.layer) : -1;
-            const xCol = mapping.x ? headers.indexOf(mapping.x) : -1;
-            const yCol = mapping.y ? headers.indexOf(mapping.y) : -1;
-            const rotCol = mapping.rotation ? headers.indexOf(mapping.rotation) : -1;
-
-            if ([designatorCol, xCol, yCol].some(col => col === -1)) {
-                alert('Błąd: Nie można znaleźć wymaganych kolumn (Designator, X, Y). Sprawdź konfigurację.');
-                return [];
-            }
-
-            const parsedComponents = [];
-            dataLines.forEach(line => {
-                const values = line.split(separator).map(v => v.trim().replace(/"/g, ''));
-                if (values.length > 1) {
-                    parsedComponents.push({
-                        designator: values[designatorCol] || '',
-                        layer: layerCol > -1 ? values[layerCol] : 'N/A',
-                        x: parseFloat(values[xCol]),
-                        y: parseFloat(values[yCol]),
-                        rotation: rotCol > -1 ? parseFloat(values[rotCol]) : 0,
-                        show: true
-                    });
-                }
-            });
-            return parsedComponents;
-        }
-
-        function calculateScaleAndOffset(components) {
-            fiducials = {};
-            const fiducialList = components.filter(c => c.designator.match(/^FD\d+$/));
-            fiducialList.forEach(f => {
-                fiducials[f.designator] = { x: f.x, y: f.y };
-            });
-
-            if (fiducials.FD1 && fiducials.FD2) {
-                const dx_mm = Math.abs(fiducials.FD1.x - fiducials.FD2.x);
-                const dy_mm = Math.abs(fiducials.FD1.y - fiducials.FD2.y);
-                const pcbWidth_px = elements.pcbImage.naturalWidth;
-                const pcbHeight_px = elements.pcbImage.naturalHeight;
-
-                const scaleX = pcbWidth_px / dx_mm;
-                const scaleY = pcbHeight_px / dy_mm;
-
-                // Używamy uśrednionej skali
-                scale = (scaleX + scaleY) / 2;
-
-                // Obliczamy offset na podstawie fiduciala
-                offset.x = (elements.pcbImage.naturalWidth / 2) - (fiducials.FD1.x * scale);
-                offset.y = (elements.pcbImage.naturalHeight / 2) - (fiducials.FD1.y * scale);
-            } else {
-                // Jeśli brak fiduciali, używamy domyślnego dopasowania do widoku
-                const allX = components.map(c => c.x);
-                const allY = components.map(c => c.y);
-                const minX = Math.min(...allX);
-                const maxX = Math.max(...allX);
-                const minY = Math.min(...allY);
-                const maxY = Math.max(...allY);
-
-                const dataWidth = maxX - minX;
-                const dataHeight = maxY - minY;
-
-                scale = Math.min(elements.overlayCanvas.width / dataWidth, elements.overlayCanvas.height / dataHeight) * 0.9;
-                offset.x = (elements.overlayCanvas.width / 2) - ((minX + maxX) / 2) * scale;
-                offset.y = (elements.overlayCanvas.height / 2) - ((minY + maxY) / 2) * scale;
-            }
-        }
-
-        function renderCanvas() {
-            if (!imageLoaded) return;
-
-            const pcbWidth = elements.pcbImage.naturalWidth;
-            const pcbHeight = elements.pcbImage.naturalHeight;
-            elements.overlayCanvas.width = pcbWidth;
-            elements.overlayCanvas.height = pcbHeight;
-
-            ctx.clearRect(0, 0, pcbWidth, pcbHeight);
-
-            components.forEach(comp => {
-                if (comp.show) {
-                    let compX = comp.x;
-                    let compY = comp.y;
-
-                    if (elements.mirrorX.checked) compX = -compX;
-                    if (elements.mirrorY.checked) compY = -compY;
-
-                    const screenX = compX * scale + offset.x;
-                    const screenY = pcbHeight - (compY * scale + offset.y);
-
-                    if (elements.viewMode.value === 'points') {
-                        ctx.beginPath();
-                        ctx.arc(screenX, screenY, 5, 0, 2 * Math.PI);
-                        ctx.fillStyle = elements.fontColor.value;
-                        ctx.fill();
-                    } else {
-                        ctx.font = `${elements.fontWeight.value} ${elements.fontSize.value}px Arial`;
-                        ctx.fillStyle = elements.fontColor.value;
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(comp.designator, screenX, screenY);
-                    }
-                }
-            });
-        }
-
-        function renderComponentList() {
-            const tbody = elements.componentList;
-            tbody.innerHTML = '';
-            const allLayers = [...new Set(components.map(c => c.layer))];
-            
-            const layerFiltersHTML = allLayers.map(layer => `
-                <label>
-                    <input type="checkbox" data-layer="${layer}" class="layer-filter" checked> ${layer}
-                </label>
-            `).join('');
-            elements.layerFilters.innerHTML = layerFiltersHTML;
-
-            components.forEach(comp => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${comp.designator}</td>
-                    <td>${comp.layer}</td>
-                    <td>${comp.x.toFixed(2)}</td>
-                    <td>${comp.y.toFixed(2)}</td>
-                    <td>${comp.rotation.toFixed(1)}</td>
-                    <td>
-                        <input type="checkbox" data-designator="${comp.designator}" class="component-show-checkbox" checked>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        // Event listeners
-        elements.pcbImageFile.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    elements.pcbImage.src = e.target.result;
-                    elements.pcbImage.onload = () => {
-                        imageLoaded = true;
-                        renderCanvas();
-                    };
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        elements.pickPlaceFile.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    rawPickPlaceData = e.target.result;
-                    showConfigPopup(rawPickPlaceData);
-                };
-                reader.readAsText(file);
-            }
-        });
-        
-        elements.impulsList.addEventListener('click', (e) => {
-            e.preventDefault();
-
-
-        });
-
-        // Popup configuration logic
-        function showConfigPopup(data) {
-            elements.configPopup.style.display = 'flex';
-            updatePreviewTable(data, elements.separatorSelect.value, elements.headerRow.value);
-        }
-
-        function showImpulsPopup(impuls) {
-            elements.impulsPopup.style.display = 'flex';
-            updateImpulsPopup(impuls);
-        }
-
-        function updatePreviewTable(data, separator, headerRow) {
-            const lines = data.trim().split('\n');
-            const previewLines = lines.slice(Math.max(0, headerRow - 1), Math.min(lines.length, headerRow + 10));
-            const previewData = previewLines.map(line => line.split(separator).map(cell => cell.trim().replace(/"/g, '')));
-
-            const table = elements.previewTable;
-            table.innerHTML = '';
-            previewData.forEach((row, rowIndex) => {
-                const tr = document.createElement('tr');
-                row.forEach(cell => {
-                    const cellTag = rowIndex === 0 ? 'th' : 'td';
-                    const td = document.createElement(cellTag);
-                    td.textContent = cell;
-                    tr.appendChild(td);
-                });
-                table.appendChild(tr);
-            });
-
-            const headerLine = lines[headerRow - 1];
-            if (headerLine) {
-                const headers = headerLine.split(separator).map(h => h.trim().replace(/"/g, ''));
-                const mappingSelects = elements.columnMapping.querySelectorAll('select');
-                mappingSelects.forEach(select => {
-                    select.innerHTML = '<option value="">-- Wybierz --</option>';
-                    headers.forEach(header => {
-                        const option = document.createElement('option');
-                        option.value = header;
-                        option.textContent = header;
-                        select.appendChild(option);
-                    });
-                });
-            }
-        }
-
-        elements.separatorSelect.addEventListener('change', () => {
-            updatePreviewTable(rawPickPlaceData, elements.separatorSelect.value, elements.headerRow.value);
-        });
-
-        elements.headerRow.addEventListener('change', () => {
-            updatePreviewTable(rawPickPlaceData, elements.separatorSelect.value, elements.headerRow.value);
-        });
-
-        elements.confirmConfig.addEventListener('click', () => {
-            const mapping = {};
-            elements.columnMapping.querySelectorAll('select').forEach(select => {
-                mapping[select.dataset.col] = select.value;
-            });
-
-            components = parsePickPlace(rawPickPlaceData, elements.separatorSelect.value, elements.headerRow.value, mapping);
-            
-            if (components.length > 0 && imageLoaded) {
-                calculateScaleAndOffset(components);
-            }
-            renderComponentList();
-            renderCanvas();
-            elements.configPopup.style.display = 'none';
-        });
-
-        elements.markLEDs.addEventListener('click', () => {
-            const keywords = ['led', ' unidirect', ' uni-direct', ' direct', ' jednokier', 'diode'];
-            components.forEach(comp => {
-                comp.show = keywords.some(keyword => comp.designator.toLowerCase().includes(keyword));
-            });
-            renderComponentList();
-            renderCanvas();
-        });
-
-        document.getElementById('layerFilters').addEventListener('change', (e) => {
-            if (e.target.classList.contains('layer-filter')) {
-                const layer = e.target.dataset.layer;
-                components.forEach(c => {
-                    if (c.layer === layer) {
-                        c.show = e.target.checked;
-                    }
-                });
-                renderComponentList();
-                renderCanvas();
-            }
-        });
-
-        // Controls events
-        elements.mirrorX.addEventListener('change', renderCanvas);
-        elements.mirrorY.addEventListener('change', renderCanvas);
-        elements.viewMode.addEventListener('change', renderCanvas);
-        elements.fontSize.addEventListener('input', renderCanvas);
-        elements.fontWeight.addEventListener('change', renderCanvas);
-        elements.fontColor.addEventListener('input', renderCanvas);
-
-        // Pan and Zoom
-        elements.overlayCanvas.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            lastMousePos = { x: e.clientX, y: e.clientY };
-        });
-
-        elements.overlayCanvas.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-
-        elements.overlayCanvas.addEventListener('mouseleave', () => {
-            isDragging = false;
-        });
-
-        elements.overlayCanvas.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                const dx = e.clientX - lastMousePos.x;
-                const dy = e.clientY - lastMousePos.y;
-                offset.x += dx;
-                offset.y += dy;
-                lastMousePos = { x: e.clientX, y: e.clientY };
-                renderCanvas();
-            }
-        });
-
-        elements.overlayCanvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-            const mouseX = e.offsetX;
-            const mouseY = e.offsetY;
-
-            // Adjust offset to zoom from mouse position
-            offset.x = mouseX - (mouseX - offset.x) * zoomFactor;
-            offset.y = mouseY - (mouseY - offset.y) * zoomFactor;
-            scale *= zoomFactor;
-
-            renderCanvas();
-        });
-
-    </script>
+    <script src="app.js"></script>
 </body>
-
 </html>

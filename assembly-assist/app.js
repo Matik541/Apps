@@ -17,20 +17,22 @@ const container = document.getElementById('canvas-container');
 const dotSizeInput = document.getElementById('dot-size');
 const fontSizeInput = document.getElementById('font-size');
 // USUNIĘCIE: textStyleSelect
-const fontWeightSelect = document.getElementById('font-weight-select'); 
-const fontFamilyInput = document.getElementById('font-family-input'); 
+const fontWeightSelect = document.getElementById('font-weight-select');
+const fontFamilyInput = document.getElementById('font-family-input');
 const colorDefaultInput = document.getElementById('color-default');
 // USUNIĘCIE: colorMissingInput, showUnmatchedCheckbox
 
 const displayModeSwitch = document.getElementById('display-mode-switch');
 const layerFilterCheckboxes = document.getElementById('layer-filter-checkboxes');
-const componentListContainer = document.getElementById('component-list-container'); 
-const copyButton = document.getElementById('copy-canvas-btn'); 
-const saveButton = document.getElementById('save-canvas-btn'); 
+const componentListContainer = document.getElementById('component-list-container');
+const copyButton = document.getElementById('copy-canvas-btn');
+const mirrorButton = document.getElementById('mirror-canvas-btn');
 
 // NOWA STAŁA: WSPÓŁCZYNNIK SKALOWANIA ROZDZIELCZOŚCI
 const SCALING_FACTOR = 5;
 
+
+let isMirrored = false;
 let rawData = "";
 let parsedData = [];
 let headers = [];
@@ -119,7 +121,7 @@ function handleSort(columnKey) {
 
     // Aktualizuj ikonki w nagłówku
     updateSortIndicators();
-    
+
     applySorting();
 }
 
@@ -131,12 +133,12 @@ function updateSortIndicators() {
         const columnKey = th.dataset.column;
         th.classList.remove('sort-asc', 'sort-desc');
         th.querySelector('.sort-indicator').textContent = '';
-        
+
         const sortOption = currentSort.find(s => s.column === columnKey);
         if (sortOption) {
             const index = currentSort.findIndex(s => s.column === columnKey);
             th.classList.add(sortOption.direction === 'asc' ? 'sort-asc' : 'sort-desc');
-            th.querySelector('.sort-indicator').textContent = 
+            th.querySelector('.sort-indicator').textContent =
                 (index + 1) + (sortOption.direction === 'asc' ? ' ▲' : ' ▼');
         }
     });
@@ -159,7 +161,7 @@ function parseData() {
     rawData = dataInput.value;
     const separatorType = separatorSelect.value;
     const headerRow = parseInt(headerRowInput.value) || 0;
-    
+
     // ... (Logika parsowania wierszy) ...
     let lines = rawData.trim().split('\n').filter(line => line.trim() !== '');
 
@@ -264,7 +266,7 @@ function updateDataPreview() {
 function updateColumnMapping() {
     const mappingDiv = document.getElementById('column-mapping');
     mappingDiv.innerHTML = '';
-    
+
     if (headers.length === 0) {
         mappingDiv.innerHTML = '<p>Brak nagłówków do mapowania.</p>';
         return;
@@ -302,7 +304,7 @@ function mapAndRender() {
 
     const mapping = {};
     let allMapped = true;
-    
+
     document.querySelectorAll('.column-map-select').forEach(select => {
         const key = select.dataset.key;
         const index = parseInt(select.value);
@@ -346,9 +348,9 @@ function mapAndRender() {
 function parseImpulsData() {
     const impulsLines = impulsDataInput.value.trim().split('\n').filter(line => line.trim() !== '');
     impulsDesignators = new Set();
-    
+
     impulsLines.forEach(line => {
-        const parts = line.split(/[,\t\s]+/).map(p => p.trim()).filter(p => p !== ''); 
+        const parts = line.split(/[,\t\s]+/).map(p => p.trim()).filter(p => p !== '');
         if (parts.length > 0) {
             impulsDesignators.add(parts[0]);
         }
@@ -362,7 +364,7 @@ function parseImpulsData() {
     });
 
     updateLayerFilters();
-    applySorting(); 
+    applySorting();
 }
 
 
@@ -370,7 +372,7 @@ function parseImpulsData() {
 
 function updateLayerFilters() {
     layerFilterCheckboxes.innerHTML = '';
-    
+
     Array.from(uniqueLayers).sort().forEach(layer => {
         const isChecked = layerVisibility[layer] ? 'checked' : '';
         const html = `
@@ -408,7 +410,7 @@ function updateComponentList() {
         { key: 'posY', label: 'Y' },
         { key: 'rotation', label: 'Rotacja' },
     ];
-    
+
     let html = '<table><thead><tr><th></th>';
     columnHeaders.forEach(header => {
         // Dodano data-column i klasę do sortowania
@@ -421,10 +423,10 @@ function updateComponentList() {
     visibleData.forEach((item, index) => {
         const isChecked = item.visible ? 'checked' : '';
         // ZMIANA: Użycie stylów z CSS zamiast zmiennych JS w HTML
-        const rowClass = item.matched ? '' : 'component-unmatched'; 
+        const rowClass = item.matched ? '' : 'component-unmatched';
         const status = item.matched ? '✔️ Dopasowany' : '⚠️ Brak Impuls';
         // Znalezienie oryginalnego indexu w nieposortowanej (lub ostatnio posortowanej) mappedData
-        const componentIndex = mappedData.indexOf(item); 
+        const componentIndex = mappedData.indexOf(item);
 
         html += `
             <tr class="${rowClass}"> 
@@ -441,7 +443,7 @@ function updateComponentList() {
 
     html += '</tbody></table>';
     componentListContainer.innerHTML = html;
-    
+
     // Po wstawieniu HTML, aktualizujemy wskaźniki sortowania
     updateSortIndicators();
 
@@ -467,18 +469,18 @@ function resizeCanvas() {
     // Ustawienie rozmiaru wyświetlanego (CSS) na rozmiar kontenera
     const visualWidth = container.clientWidth;
     const visualHeight = Math.max(container.clientHeight, 600);
-    
+
     // Ustawienie natywnej rozdzielczości (width/height atrybuty)
     // Canvas jest skalowany 10x
     canvas.width = visualWidth * SCALING_FACTOR;
     canvas.height = visualHeight * SCALING_FACTOR;
-    
+
     // Ustawienie CSS by zapobiec dziwnemu rozciąganiu
     canvas.style.width = `${visualWidth}px`;
     canvas.style.height = `${visualHeight}px`;
 
     // Ustawienie transformacji, aby wszystkie operacje rysowania były skalowane
-    
+
     renderCanvas();
 }
 
@@ -487,7 +489,7 @@ function renderCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (mappedData.length === 0) {
-        ctx.font = '20px sans-serif';
+        ctx.font = 20 * SCALING_FACTOR + 'px sans-serif';
         ctx.fillStyle = '#999';
         ctx.textAlign = 'center';
         // Użyj rozmiarów WIZUALNYCH
@@ -503,7 +505,7 @@ function renderCanvas() {
     const fontFamily = fontFamilyInput.value || 'sans-serif';
     const colorDefault = colorDefaultInput.value;
     // USUNIĘCIE: colorMissing
-    const displayMode = displayModeSwitch.value; 
+    const displayMode = displayModeSwitch.value;
 
     // 1. Normalizacja/Skalowanie
     const filteredData = mappedData.filter(item => {
@@ -533,13 +535,13 @@ function renderCanvas() {
 
     const margin = 50 * SCALING_FACTOR; // ZMIANA: Margines 50px
     // ZMIANA: Użycie rozmiarów WIZUALNYCH
-    const drawWidth = canvas.width - 2 * margin; 
+    const drawWidth = canvas.width - 2 * margin;
     const drawHeight = canvas.height - 2 * margin;
 
     const scaleX = dataWidth > 0 ? drawWidth / dataWidth : 1;
     const scaleY = dataHeight > 0 ? drawHeight / dataHeight : 1;
     const scale = Math.min(scaleX, scaleY); // ZMIANA: Skalowanie 10x
-    
+
     const scaledDataWidth = dataWidth * scale;
     const scaledDataHeight = dataHeight * scale;
     const offsetX = margin + (drawWidth - scaledDataWidth) / 2;
@@ -553,17 +555,17 @@ function renderCanvas() {
         ctx.strokeRect(offsetX, offsetY, scaledDataWidth, scaledDataHeight);
     }
     */
-    
+
     // 2. Rysowanie punktów
     filteredData.forEach(item => {
         if (!item.visible) return;
 
         // Transformacja
-        const canvasX = offsetX + (item.posX - minX) * scale;
-        const canvasY = offsetY + (maxY - item.posY) * scale; 
-        
+        const canvasX = (offsetX + (item.posX - minX) * scale) * (isMirrored ? -1 : 1) + (isMirrored ? canvas.width : 0);
+        const canvasY = offsetY + (maxY - item.posY) * scale;
+
         // ZMIANA: kolor jest zależny od matched, kolor dla unmatched jest stały (czerwony)
-        const color = item.matched ? colorDefault : '#FF0000'; 
+        const color = item.matched ? colorDefault : '#FF0000';
 
         // Rysowanie kropki
         if (displayMode === 'dot' || displayMode === 'both') {
@@ -579,23 +581,23 @@ function renderCanvas() {
             // Ustawienie pełnego stylu czcionki
             // ZMIANA: Usunięto textStyle (zawsze 'normal')
             ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
-            
+
             // Punkt P&P (canvasX, canvasY) jest środkiem tekstu (0,0 rotacji)
-            ctx.textAlign = 'center'; 
-            ctx.textBaseline = 'middle'; 
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
 
             // Rotacja
-            const rotationRad = item.rotation * (Math.PI / 180); 
-            
+            const rotationRad = (displayMode === 'both') ? 0 : (item.rotation % 180) * (Math.PI / 180)
+
             // Zapisz stan, przesuń, obróć, narysuj, przywróć
             ctx.save();
-            ctx.translate(canvasX, canvasY); 
-            ctx.rotate(-rotationRad); 
+            ctx.translate(canvasX, canvasY - (displayMode === 'both' ? dotSize + 5 : 0)); // Mały offset w dół, jeśli jest kropka
+            ctx.rotate(-rotationRad);
 
             // Rysowanie tekstu na (0, 0) - nowym środku
-            ctx.fillText(item.designator, 0, 0); 
-            
-            ctx.restore(); 
+            ctx.fillText(item.designator, 0, 0);
+
+            ctx.restore();
         }
     });
 }
@@ -621,17 +623,10 @@ function copyCanvasToClipboard() {
     }, 'image/png');
 }
 
-function saveCanvasImage() {
-    // ZMIANA: Wykorzystanie natywnej rozdzielczości
-    const dataURL = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.href = dataURL;
-    link.download = 'pick_and_place_visualization.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+function mirrorCanvasHorizontally() {
+    isMirrored = !isMirrored;
+    renderCanvas();
 }
-
 
 // --- Logika Fixed Width Visualizer (bez zmian) ---
 
@@ -643,11 +638,11 @@ function getSampleLine() {
 function updateFixedWidthVisualizer() {
     const sampleLine = getSampleLine();
     fixedWidthVisualizer.innerHTML = '';
-    
+
     let widths = [0];
     if (fixedWidthsInput.value.trim() !== '') {
         widths = fixedWidthsInput.value.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n)).sort((a, b) => a - b);
-        if (widths[0] !== 0) widths.unshift(0); 
+        if (widths[0] !== 0) widths.unshift(0);
     } else {
         fixedWidthsInput.value = '0';
     }
@@ -665,7 +660,7 @@ function updateFixedWidthVisualizer() {
             marker.style.left = `${pos * 9}px`;
             marker.title = `Kolumna zaczyna się na pozycji: ${pos}`;
             marker.dataset.position = pos;
-            
+
             if (pos !== 0) {
                 const deleteBtn = document.createElement('span');
                 deleteBtn.className = 'delete-marker';
@@ -711,8 +706,8 @@ fixedWidthVisualizer.addEventListener('click', (e) => {
 
     const rect = preElement.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
-    const charPos = Math.round(clickX / 9); 
-    
+    const charPos = Math.round(clickX / 9);
+
     if (charPos > 0 && charPos < getSampleLine().length) {
         addFixedWidth(charPos);
     }
@@ -732,7 +727,7 @@ separatorSelect.addEventListener('change', () => {
 });
 headerRowInput.addEventListener('input', parseData);
 
-fixedWidthsInput.addEventListener('change', () => { 
+fixedWidthsInput.addEventListener('change', () => {
     updateFixedWidthVisualizer();
     parseData();
 });
@@ -754,7 +749,7 @@ impulsDataInput.addEventListener('input', parseImpulsData);
 
 // Listenery dla opcji wizualizacji
 // ZMIANA: Listener dla zwykłego input number
-dotSizeInput.addEventListener('input', renderCanvas); 
+dotSizeInput.addEventListener('input', renderCanvas);
 
 fontSizeInput.addEventListener('input', renderCanvas);
 // USUNIĘCIE: textStyleSelect.addEventListener('change', renderCanvas);
@@ -763,10 +758,10 @@ fontFamilyInput.addEventListener('input', renderCanvas);
 colorDefaultInput.addEventListener('input', renderCanvas);
 // USUNIĘCIE: colorMissingInput, showUnmatchedCheckbox
 displayModeSwitch.addEventListener('change', renderCanvas);
-copyButton.addEventListener('click', copyCanvasToClipboard); 
-saveButton.addEventListener('click', saveCanvasImage); 
+copyButton.addEventListener('click', copyCanvasToClipboard);
+mirrorButton.addEventListener('click', mirrorCanvasHorizontally);
 
 
 window.addEventListener('resize', resizeCanvas);
-resizeCanvas(); 
+resizeCanvas();
 // parseData();

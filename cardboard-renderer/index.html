@@ -18,7 +18,8 @@
         }
         }
     </script>
-    <script src="secret.js"></script>
+    <script> let url = "data.json"; </script>
+    <script src="data.js"></script>
     <script type="module" src="script.js"></script>
 
 
@@ -32,7 +33,7 @@
         body {
             font-family: 'Inter', sans-serif;
             margin: 0;
-            overflow: hidden;
+            overflow-x: hidden; /* Zmienione na ukrycie tylko poziomego paska */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -56,12 +57,32 @@
             overflow-y: auto;
             border-right: 1px solid #e5e7eb;
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+            /* Zintegrowane formularze: zmiana na pionowy układ */
+            display: flex;
+            flex-direction: column; 
+            gap: 20px;
         }
 
         #render-container {
             flex-grow: 1;
             height: 100%;
             position: relative;
+            /* Początkowe przesunięcie w prawo - render poza ekranem */
+            transform: translateX(100%); 
+            transition: transform 0.5s ease-out;
+            min-width: 650px; /* Minimalna szerokość, by było miejsce na widok */
+        }
+        
+        /* Klasa do wysunięcia renderu */
+        #render-container.active {
+            transform: translateX(0%);
+        }
+
+        /* Ustawienie układu dla sekcji kartonów, by były pionowo */
+        #cardboard-panels {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
 
         canvas {
@@ -157,40 +178,42 @@
         <div id="controls-panel" class="rounded-l-lg">
             <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Projektant Kratownicy</h1>
             <p class="text-sm text-gray-500 mb-8 text-center">
-                Zaznacz wcięcia, które chcesz uwzględnić w projekcie.
+                Wprowadź wymiary płytki i zoptymalizuj kratownicę.
             </p>
 
-            <div id="cardboard-panels"></div>
-
-            <div id="filling-settings" class="bg-gray-100 p-4 rounded-xl shadow-sm mt-6">
-                <h2 class="text-lg font-semibold mb-3 text-center">Przykładowe wypełnienie</h2>
+            <div id="tile-settings" class="bg-gray-100 p-4 rounded-xl shadow-sm">
+                <h2 class="text-lg font-semibold mb-3 text-center">Wymiary Płytki (Wypełnienia)</h2>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Szerokość</label>
-                        <input type="number" id="filler-width" class="w-full border rounded px-2 py-1" value="0">
+                        <label class="block text-sm font-medium text-gray-700">Szerokość (X)</label>
+                        <input type="number" id="tile-width" class="w-full border rounded px-2 py-1" value="50">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Głębokość</label>
-                        <input type="number" id="filler-depth" class="w-full border rounded px-2 py-1" value="0">
+                        <label class="block text-sm font-medium text-gray-700">Głębokość (Z)</label>
+                        <input type="number" id="tile-depth" class="w-full border rounded px-2 py-1" value="50">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Wysokość</label>
-                        <input type="number" id="filler-height" class="w-full border rounded px-2 py-1" value="0">
+                        <label class="block text-sm font-medium text-gray-700">Wysokość (Y)</label>
+                        <input type="number" id="tile-height" class="w-full border rounded px-2 py-1" value="50">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Min. odstęp</label>
-                        <input type="number" id="filler-margin" class="w-full border rounded px-2 py-1" value="0">
+                        <input type="number" id="tile-margin" class="w-full border rounded px-2 py-1" value="2">
                     </div>
                 </div>
-                <button id="add-filler"
+                <button id="optimize-lattice"
                     class="mt-4 w-full bg-[color:var(--main-color)] text-white py-2 rounded-md hover:opacity-90">
-                    Dodaj wypełnienie
+                    Znajdź najlepszą kratownicę
                 </button>
-                <button id="clear-filler"
-                    class="mt-4 w-full bg-[color:var(--main-color)] text-white py-2 rounded-md hover:opacity-90">
-                    Wyczyść wypełnienie
-                </button>
+                <!-- hide filler -->
+                 <button id="hide-filler" 
+                    class="mt-2 w-full bg-gray-300 text-gray-700 py-2 rounded-md hover:opacity-90">
+                    Ukryj wypełnienie
+                 </button>
             </div>
+
+
+            <div id="cardboard-panels"></div>
 
 
             <div class="mt-8 text-center">

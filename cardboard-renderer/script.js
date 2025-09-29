@@ -57,6 +57,8 @@ let selectedNotches = {
 
 let THICKNESS = cardboardData[0].thickness ?? 3;
 
+let tileDimensions = { w: 50, d: 50, h: 50, m: 2 };
+
 function init() {
     selectedCardboards = {
         axis1: cardboardData[0].id,
@@ -128,6 +130,9 @@ function setupControlsUI() {
 
     createPanel(panelsContainer, 1);
     createPanel(panelsContainer, 2);
+
+    document.getElementById('optimize-lattice').addEventListener('click', optimizeLattice);
+    document.getElementById('render-container').classList.add('active');
 }
 
 function createPanel(parent, axisIndex) {
@@ -252,18 +257,17 @@ function createCardboardMesh(cardboard, isHorizontal) {
 }
 
 function hsl0x(h, s, l) {
-  l /= 100;
-  const a = s * Math.min(l, 1 - l) / 100;
-  const f = n => {
-    const k = (n + h / 30) % 12;
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color).toString(16).padStart(2, '0');   // convert to Hex and prefix "0" if needed
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
+    l /= 100;
+    const a = s * Math.min(l, 1 - l) / 100;
+    const f = n => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color).toString(16).padStart(2, '0');   // convert to Hex and prefix "0" if needed
+    };
+    return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-
-function renderLattice() {
+function renderLattice(shouldRenderFiller = false) {
     cardboardGroup.children.forEach(mesh => mesh.geometry.dispose());
     cardboardGroup.clear();
 
@@ -280,7 +284,7 @@ function renderLattice() {
         if (isChecked) {
             const notchPos = notchesPositions2[i];
             const geometry = createCardboardMesh(cardboard1, true);
-            const material = new THREE.MeshLambertMaterial({ color: hsl0x(34, 56, 60 + i) });
+            const material = new THREE.MeshLambertMaterial({ color: hsl0x(34, 56 + i/2, 60 + i/2) });
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(0, 0, notchPos);
 
@@ -299,7 +303,7 @@ function renderLattice() {
         if (isChecked) {
             const notchPos = notchesPositions1[i];
             const geometry = createCardboardMesh(cardboard2, false);
-            const material = new THREE.MeshLambertMaterial({ color: 0xd4ac77 });
+            const material = new THREE.MeshLambertMaterial({ color: hsl0x(34, 52 + i/2, 60 + i/2) });
             const mesh = new THREE.Mesh(geometry, material);
             mesh.rotation.y = Math.PI / 2;
             mesh.position.set(notchPos, 0, 0);
@@ -315,7 +319,187 @@ function renderLattice() {
     });
 
     renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPositions2);
-    renderfiller(cardboard1, cardboard2, notchesPositions1, notchesPositions2);
+
+    // Warunkowe renderowanie wypełnienia (płytek)
+    if (shouldRenderFiller) {
+        renderTiles(cardboard1, cardboard2, notchesPositions1, notchesPositions2);
+    }
+}
+
+
+// NOWA FUNKCJA: Renderowanie Płytek (Wypełnienia)
+function renderTiles(cardboard1, cardboard2, notchesPositions1, notchesPositions2) {
+    const { w, d, h, m } = tileDimensions;
+
+    // Pobranie aktualnie aktywnych nacięć
+    const selected1 = selectedNotches.axis1[cardboard1.id];
+    const selected2 = selectedNotches.axis2[cardboard2.id];
+    const active1 = notchesPositions1.filter((_, i) => selected1[i]);
+    const active2 = notchesPositions2.filter((_, i) => selected2[i]);
+
+    // Minimalna wysokość komórki
+    const heightFree = Math.min(cardboard1.depth, cardboard2.depth);
+
+
+    for (let i = 0; i < active1.length - 1; i++) {
+        for (let j = 0; j < active2.length - 1; j++) {
+            const widthFree = Math.abs(active1[i + 1] - active1[i]) - THICKNESS - 2 * m;
+            const depthFree = Math.abs(active2[j + 1] - active2[j]) - THICKNESS - 2 * m;
+
+            // Sprawdzenie, czy kieszeń jest wystarczająco duża
+            if (widthFree >= w && depthFree >= d && heightFree >= h) {
+                // Rysowanie płytki, która się mieści
+                const geometry = new THREE.BoxGeometry(w, h, d);
+                // Niebieski kolor (mieści się)
+                let material = new THREE.MeshLambertMaterial({ color: 0x326ecf, opacity: 0.8, transparent: true });
+
+                const box = new THREE.Mesh(geometry, material);
+
+                // Wyliczenie pozycji środka wolnej przestrzeni (bez marginesów)
+                const startX = active1[i] + THICKNESS / 2 + m;
+                const endX = active1[i + 1] - THICKNESS / 2 - m;
+                const centerX = (startX + endX) / 2;
+
+                const startZ = active2[j] + THICKNESS / 2 + m;
+                const endZ = active2[j + 1] - THICKNESS / 2 - m;
+                const centerZ = (startZ + endZ) / 2;
+
+                // box.position.set(centerX, yOffset, centerZ);
+                // Płytka jest na spodzie, więc Y to h/2 (bo box jest wycentrowany)
+                box.position.set(centerX, -cardboard1.depth / 2 + h / 2, centerZ);
+                cardboardGroup.add(box);
+            }
+        }
+    }
+}
+function optimizeLattice() {
+    // 1. Pobierz wymiary płytki
+    const w = parseFloat(document.getElementById('tile-width').value);
+    const d = parseFloat(document.getElementById('tile-depth').value);
+    const h = parseFloat(document.getElementById('tile-height').value);
+    const m = parseFloat(document.getElementById('tile-margin').value);
+
+    tileDimensions = { w, d, h, m };
+
+    let bestScore = -1;
+    let bestConfig = null;
+    let bestCardboard1 = null;
+    let bestCardboard2 = null;
+
+    // Iteracja po wszystkich kombinacjach kartonów (zakładamy, że wysokość kartonów jest głębokością w osi Y)
+    // Oś Pionowa (X-axis) - cardboard1 - kontroluje Szerokość (W)
+    // Oś Pozioma (Z-axis) - cardboard2 - kontroluje Głębokość (D)
+
+    // Filtrowanie kartonów, których głębokość (Y-axis) nie jest wystarczająca dla wysokości płytki (H)
+    const availableCardboards = cardboardData.filter(c => Math.min(c.depth, cardboardData[0].depth) >= h);
+
+    if (availableCardboards.length === 0) {
+        alert("Brak kartonów o wystarczającej wysokości dla płytki.");
+        return;
+    }
+
+    for (const c1 of availableCardboards) {
+        for (const c2 of availableCardboards) {
+
+            // Wymóg: Wysokość musi się zgadzać (zakładamy, że głębokość c1 musi być wystarczająca dla c2)
+            // Jeśli oba kartony mają różne głębokości, to wysokość komórki jest mniejszą z nich.
+            const cellHeight = Math.min(c1.depth, c2.depth);
+            if (cellHeight < h) continue; // Ponowna kontrola na wszelki wypadek
+
+            const notches1 = getNotchPositions(c1);
+            const notches2 = getNotchPositions(c2);
+
+            // Generowanie wszystkich możliwych kombinacji nacięć
+            // 2^(ilość nacięć) to za dużo, ograniczymy się do kombinacji, które generują komórki 
+            // wystarczająco duże dla płytki (w * d)
+
+            // Funkcja pomocnicza do obliczania wyniku dla danej konfiguracji nacięć
+            const calculateScore = (config1, config2) => {
+                const active1 = notches1.filter((_, i) => config1[i]);
+                const active2 = notches2.filter((_, i) => config2[i]);
+
+                if (active1.length < 2 || active2.length < 2) return 0;
+
+                let tileCount = 0;
+
+                for (let i = 0; i < active1.length - 1; i++) {
+                    for (let j = 0; j < active2.length - 1; j++) {
+                        const widthFree = Math.abs(active1[i + 1] - active1[i]) - THICKNESS - 2 * m;
+                        const depthFree = Math.abs(active2[j + 1] - active2[j]) - THICKNESS - 2 * m;
+
+                        if (widthFree >= w && depthFree >= d) {
+                            tileCount++;
+                        }
+                    }
+                }
+                return tileCount;
+            };
+
+            // Zbudowanie idealnej konfiguracji nacięć dla minimalnej odległości
+            const minSpaceW = w + 2 * m + THICKNESS;
+            const minSpaceD = d + 2 * m + THICKNESS;
+
+            // Optimalizacja dla Osi 1 (szerokość)
+            let idealConfig1 = new Array(c1.tooths.length + 1).fill(false);
+            idealConfig1[0] = true; // Zawsze bierzemy pierwsze nacięcie
+            let lastNotchPos = notches1[0];
+            for (let i = 1; i < notches1.length; i++) {
+                if (notches1[i] - lastNotchPos >= minSpaceW) {
+                    idealConfig1[i] = true;
+                    lastNotchPos = notches1[i];
+                }
+            }
+            // Zapewnienie, że ostatnie nacięcie (dla krawędzi) jest wzięte, jeśli jest blisko.
+            if (!idealConfig1[notches1.length - 1]) idealConfig1[notches1.length - 1] = true;
+
+
+            // Optimalizacja dla Osi 2 (głębokość)
+            let idealConfig2 = new Array(c2.tooths.length + 1).fill(false);
+            idealConfig2[0] = true; // Zawsze bierzemy pierwsze nacięcie
+            lastNotchPos = notches2[0];
+            for (let i = 1; i < notches2.length; i++) {
+                if (notches2[i] - lastNotchPos >= minSpaceD) {
+                    idealConfig2[i] = true;
+                    lastNotchPos = notches2[i];
+                }
+            }
+            if (!idealConfig2[notches2.length - 1]) idealConfig2[notches2.length - 1] = true;
+
+
+            const currentScore = calculateScore(idealConfig1, idealConfig2);
+
+            if (currentScore > bestScore) {
+                bestScore = currentScore;
+                bestConfig = { config1: idealConfig1, config2: idealConfig2 };
+                bestCardboard1 = c1.id;
+                bestCardboard2 = c2.id;
+            }
+        }
+    }
+
+    // 2. Aplikuj najlepszą konfigurację i odśwież render
+    if (bestConfig && bestScore > 0) {
+        // Zaznacz wybrane opcje w formularzach
+        selectedCardboards.axis1 = bestCardboard1;
+        selectedCardboards.axis2 = bestCardboard2;
+        selectedNotches.axis1[bestCardboard1] = bestConfig.config1;
+        selectedNotches.axis2[bestCardboard2] = bestConfig.config2;
+
+        // Odśwież widok kontroli na podstawie nowej konfiguracji
+        updateNotchPanel(1);
+        updateNotchPanel(2);
+
+        // Ustawienie wartości w selectach
+        document.getElementById('select-cardboard-1').value = bestCardboard1;
+        document.getElementById('select-cardboard-2').value = bestCardboard2;
+
+        alert(`Znaleziono najlepszą kratownicę: ${bestCardboard1} (Pionowa) x ${bestCardboard2} (Pozioma), Mieści: ${bestScore} płytek.`);
+
+        renderLattice(true); // Wymuś render z wypełnieniem
+    } else {
+        alert("Nie można zmieścić żadnej płytki w dostępnych kratownicach.");
+        renderLattice(false);
+    }
 }
 
 function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPositions2) {
@@ -555,58 +739,6 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-let filler = [];
-
-document.getElementById('add-filler').addEventListener('click', () => {
-    const w = parseFloat(document.getElementById('filler-width').value);
-    const d = parseFloat(document.getElementById('filler-depth').value);
-    const h = parseFloat(document.getElementById('filler-height').value);
-    const m = parseFloat(document.getElementById('filler-margin').value);
-
-    filler = [{ w, d, h, m }];
-    renderLattice();
-});
-
-document.getElementById('clear-filler').addEventListener('click', () => {
-    filler = [];
-    renderLattice();
-});
-
-function renderfiller(cardboard1, cardboard2, notchesPositions1, notchesPositions2) {
-    if (filler.length === 0) return;
-
-    const { w, d, h, m } = filler[0];
-
-    // iteracja po kieszeniach
-    const selected1 = selectedNotches.axis1[cardboard1.id];
-    const selected2 = selectedNotches.axis2[cardboard2.id];
-    const active1 = notchesPositions1.filter((_, i) => selected1[i]);
-    const active2 = notchesPositions2.filter((_, i) => selected2[i]);
-
-    for (let i = 0; i < active1.length - 1; i++) {
-        for (let j = 0; j < active2.length - 1; j++) {
-            const widthFree = Math.abs(active1[i + 1] - active1[i]) - THICKNESS - 2 * m;
-            const depthFree = Math.abs(active2[j + 1] - active2[j]) - THICKNESS - 2 * m;
-            const heightFree = Math.min(cardboard1.depth, cardboard2.depth);
-
-            const geometry = new THREE.BoxGeometry(w, h, d);
-            let material = new THREE.MeshLambertMaterial({ color: 0x326ecf, opacity: 0.6, transparent: true });
-            if (widthFree < w || depthFree < d || heightFree < h) {
-                material = new THREE.MeshLambertMaterial({ color: 0xf8312f, opacity: 0.6, transparent: true });
-            }
-
-            const box = new THREE.Mesh(geometry, material);
-
-            const centerX = (active1[i] + active1[i + 1]) / 2;
-            const centerZ = (active2[j] + active2[j + 1]) / 2;
-
-            box.position.set(centerX, 0, centerZ);
-            cardboardGroup.add(box);
-        }
-    }
-}
-
-
 function onMouseDown(e) {
     if (e.button === 0) {
         isRotating = true;
@@ -633,8 +765,6 @@ function onMouseMove(e) {
     const deltaY = e.clientY - mouseY;
     mouseX = e.clientX;
     mouseY = e.clientY;
-
-    const distance = camera.position.distanceTo(target);
 
     if (isRotating) {
         const spherical = new THREE.Spherical().setFromVector3(camera.position.clone().sub(target));
@@ -750,4 +880,8 @@ document.getElementById("toggle-camera").addEventListener("click", () => {
         camera = orthoCamera;
         isOrtho = true;
     }
+});
+
+document.getElementById("hide-filler").addEventListener("click", () => {
+    renderLattice(false);
 });

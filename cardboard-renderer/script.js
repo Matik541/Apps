@@ -3,7 +3,7 @@ import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 
 const container = document.getElementById('render-container');
-let scene, camera, renderer, cardboardGroup;
+let scene, camera, renderer, combGroup;
 let isRotating = false;
 let isPanning = false;
 let mouseX = 0, mouseY = 0;
@@ -14,10 +14,10 @@ let orthoCamera, perspectiveCamera;
 let isOrtho = false;
 
 
-
-const cardboardData = [
+const cardboardsData = [];
+const combsData = [
     {
-        "id": "Wymyślony karton",
+        "id": "0",
         "name": "Wymyślony karton",
         "width": 350,
         "depth": 200,
@@ -27,42 +27,50 @@ const cardboardData = [
     },
 ]
 
-async function fetchCardboardData() {
+async function fetchCombsData() {
     if (url === undefined) {
-        console.error("URL not defined. Create a secret.js file with the URL variable.");
+        console.error("Cant resolve request.");
+        init();
+        animate();
+
         return;
     }
     try {
         const response = await fetch(url);
         const data = await response.json();
 
-        cardboardData.push(...data);
-        console.log("Fetched cardboard data:", cardboardData);
+        const cardboards = data.cardboards || [];
+        cardboardsData.push(...cardboards);
+        console.log("Fetched cardboard data:", combsData);
+
+        const combs = data.combs || [];
+        combsData.push(...combs);
+        console.log("Fetched comb data:", combsData);
 
         init();
         animate();
 
     } catch (error) {
-        console.error("Error fetching cardboard data:", error);
+        console.error("Error fetching comb data:", error);
     }
 }
-fetchCardboardData();
+fetchCombsData();
 
-let selectedCardboards
+let selectedCombs
 
 let selectedNotches = {
     axis1: {},
     axis2: {}
 };
 
-let THICKNESS = cardboardData[0].thickness ?? 3;
+let THICKNESS = combsData[0].thickness ?? 3;
 
 let tileDimensions = { w: 50, d: 50, h: 50, m: 2 };
 
 function init() {
-    selectedCardboards = {
-        axis1: cardboardData[0].id,
-        axis2: cardboardData[0].id
+    selectedCombs = {
+        axis1: combsData[0].id,
+        axis2: combsData[0].id
     };
 
     // Kamera perspektywiczna
@@ -109,13 +117,13 @@ function init() {
     scene.add(directionalLight);
 
 
-    cardboardGroup = new THREE.Group();
-    scene.add(cardboardGroup);
+    combGroup = new THREE.Group();
+    scene.add(combGroup);
 
-    // Usunięto początkową rotację cardboardGroup
+    // Usunięto początkową rotację combGroup
 
     for (const axis of ['axis1', 'axis2']) {
-        cardboardData.forEach(c => {
+        combsData.forEach(c => {
             selectedNotches[axis][c.id] = new Array(c.tooths.length + 1).fill(false);
         });
     }
@@ -125,7 +133,7 @@ function init() {
 }
 
 function setupControlsUI() {
-    const panelsContainer = document.getElementById('cardboard-panels');
+    const panelsContainer = document.getElementById('comb-panels');
     panelsContainer.innerHTML = '';
 
     createPanel(panelsContainer, 1);
@@ -141,24 +149,24 @@ function createPanel(parent, axisIndex) {
     panel.innerHTML = `
                 <h2 class="text-xl font-semibold mb-4 text-center">Karton Oś ${axisIndex == 1 ? 'Pionowa' : 'Pozioma'}</h2>
                 <div class="mb-4">
-                    <label for="select-cardboard-${axisIndex}" class="block text-sm font-medium text-gray-700 mb-1">Wybierz typ kartonu:</label>
-                    <select id="select-cardboard-${axisIndex}" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm rounded-md"></select>
+                    <label for="select-comb-${axisIndex}" class="block text-sm font-medium text-gray-700 mb-1">Wybierz typ kartonu:</label>
+                    <select id="select-comb-${axisIndex}" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm rounded-md"></select>
                 </div>
                 <div id="notches-container-${axisIndex}" class="notch-grid-container"></div>
             `;
     parent.appendChild(panel);
 
-    const selectEl = panel.querySelector(`#select-cardboard-${axisIndex}`);
-    cardboardData.forEach(c => {
+    const selectEl = panel.querySelector(`#select-comb-${axisIndex}`);
+    combsData.forEach(c => {
         const option = document.createElement('option');
         option.value = c.id;
         option.textContent = c.name;
         selectEl.appendChild(option);
     });
-    selectEl.value = selectedCardboards[`axis${axisIndex}`];
+    selectEl.value = selectedCombs[`axis${axisIndex}`];
 
     selectEl.addEventListener('change', (e) => {
-        selectedCardboards[`axis${axisIndex}`] = e.target.value;
+        selectedCombs[`axis${axisIndex}`] = e.target.value;
         updateNotchPanel(axisIndex);
         renderLattice();
     });
@@ -171,14 +179,14 @@ function updateNotchPanel(axisIndex) {
     const notchesContainer = document.getElementById(containerId);
     notchesContainer.innerHTML = '';
 
-    const selectedId = selectedCardboards[`axis${axisIndex}`];
-    const cardboard = cardboardData.find(c => c.id === selectedId);
+    const selectedId = selectedCombs[`axis${axisIndex}`];
+    const comb = combsData.find(c => c.id === selectedId);
 
     if (!selectedNotches[`axis${axisIndex}`][selectedId]) {
-        selectedNotches[`axis${axisIndex}`][selectedId] = new Array(cardboard.tooths.length + 1).fill(false);
+        selectedNotches[`axis${axisIndex}`][selectedId] = new Array(comb.tooths.length + 1).fill(false);
     }
 
-    for (let i = 0; i < cardboard.tooths.length + 1; i++) {
+    for (let i = 0; i < comb.tooths.length + 1; i++) {
         const chip = document.createElement('label');
         chip.className = 'chip';
         chip.innerHTML = `
@@ -201,46 +209,46 @@ function updateNotchPanel(axisIndex) {
 
 }
 
-function getNotchPositions(cardboard) {
+function getNotchPositions(comb) {
     const positions = [];
-    let currentPos = -cardboard.width / 2;
+    let currentPos = -comb.width / 2;
 
-    currentPos += cardboard.margin;
+    currentPos += comb.margin;
     positions.push(currentPos);
-    currentPos += cardboard.gap;
+    currentPos += comb.gap;
 
-    cardboard.tooths.forEach(toothLength => {
+    comb.tooths.forEach(toothLength => {
         currentPos += toothLength;
         positions.push(currentPos);
-        currentPos += cardboard.gap;
+        currentPos += comb.gap;
     });
 
     return positions;
 }
 
-function createCardboardMesh(cardboard, isHorizontal) {
+function createCombMesh(comb, isHorizontal) {
     const shape = new THREE.Shape();
-    shape.moveTo(-cardboard.width / 2, -cardboard.depth / 2);
-    shape.lineTo(cardboard.width / 2, -cardboard.depth / 2);
-    shape.lineTo(cardboard.width / 2, cardboard.depth / 2);
-    shape.lineTo(-cardboard.width / 2, cardboard.depth / 2);
-    shape.lineTo(-cardboard.width / 2, -cardboard.depth / 2);
+    shape.moveTo(-comb.width / 2, -comb.depth / 2);
+    shape.lineTo(comb.width / 2, -comb.depth / 2);
+    shape.lineTo(comb.width / 2, comb.depth / 2);
+    shape.lineTo(-comb.width / 2, comb.depth / 2);
+    shape.lineTo(-comb.width / 2, -comb.depth / 2);
 
-    const notchHeight = cardboard.depth / 2;
-    const notchsX = getNotchPositions(cardboard);
+    const notchHeight = comb.depth / 2;
+    const notchsX = getNotchPositions(comb);
 
     for (let notchX of notchsX) {
         const notchShape = new THREE.Path();
         if (isHorizontal) {
-            notchShape.moveTo(notchX - THICKNESS / 2, cardboard.depth / 2);
-            notchShape.lineTo(notchX + THICKNESS / 2, cardboard.depth / 2);
-            notchShape.lineTo(notchX + THICKNESS / 2, cardboard.depth / 2 - notchHeight);
-            notchShape.lineTo(notchX - THICKNESS / 2, cardboard.depth / 2 - notchHeight);
+            notchShape.moveTo(notchX - THICKNESS / 2, comb.depth / 2);
+            notchShape.lineTo(notchX + THICKNESS / 2, comb.depth / 2);
+            notchShape.lineTo(notchX + THICKNESS / 2, comb.depth / 2 - notchHeight);
+            notchShape.lineTo(notchX - THICKNESS / 2, comb.depth / 2 - notchHeight);
         } else {
-            notchShape.moveTo(notchX + THICKNESS / 2, -cardboard.depth / 2);
-            notchShape.lineTo(notchX + THICKNESS * 1.5, -cardboard.depth / 2);
-            notchShape.lineTo(notchX + THICKNESS * 1.5, -cardboard.depth / 2 + notchHeight);
-            notchShape.lineTo(notchX + THICKNESS / 2, -cardboard.depth / 2 + notchHeight);
+            notchShape.moveTo(notchX + THICKNESS / 2, -comb.depth / 2);
+            notchShape.lineTo(notchX + THICKNESS * 1.5, -comb.depth / 2);
+            notchShape.lineTo(notchX + THICKNESS * 1.5, -comb.depth / 2 + notchHeight);
+            notchShape.lineTo(notchX + THICKNESS / 2, -comb.depth / 2 + notchHeight);
         }
         shape.holes.push(notchShape);
     }
@@ -268,77 +276,77 @@ function hsl0x(h, s, l) {
 }
 
 function renderLattice(shouldRenderFiller = false) {
-    cardboardGroup.children.forEach(mesh => mesh.geometry.dispose());
-    cardboardGroup.clear();
+    combGroup.children.forEach(mesh => mesh.geometry.dispose());
+    combGroup.clear();
 
-    const cardboard1 = cardboardData.find(c => c.id === selectedCardboards.axis1);
-    const cardboard2 = cardboardData.find(c => c.id === selectedCardboards.axis2);
+    const comb1 = combsData.find(c => c.id === selectedCombs.axis1);
+    const comb2 = combsData.find(c => c.id === selectedCombs.axis2);
 
-    const notchesPositions1 = getNotchPositions(cardboard1);
-    const notchesPositions2 = getNotchPositions(cardboard2);
+    const notchesPositions1 = getNotchPositions(comb1);
+    const notchesPositions2 = getNotchPositions(comb2);
 
     const outlineMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
 
     // Rendering poziomych kartonów
-    selectedNotches.axis2[cardboard2.id].forEach((isChecked, i) => {
+    selectedNotches.axis2[comb2.id].forEach((isChecked, i) => {
         if (isChecked) {
             const notchPos = notchesPositions2[i];
-            const geometry = createCardboardMesh(cardboard1, true);
+            const geometry = createCombMesh(comb1, true);
             const material = new THREE.MeshLambertMaterial({ color: hsl0x(34, 56 + i/2, 60 + i/2) });
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(0, 0, notchPos);
 
-            cardboardGroup.add(mesh);
+            combGroup.add(mesh);
 
             const edges = new THREE.EdgesGeometry(geometry);
             const line = new THREE.LineSegments(edges, outlineMaterial);
             line.position.copy(mesh.position);
             line.rotation.copy(mesh.rotation);
-            cardboardGroup.add(line);
+            combGroup.add(line);
         }
     });
 
     // Rendering pionowych kartonów
-    selectedNotches.axis1[cardboard1.id].forEach((isChecked, i) => {
+    selectedNotches.axis1[comb1.id].forEach((isChecked, i) => {
         if (isChecked) {
             const notchPos = notchesPositions1[i];
-            const geometry = createCardboardMesh(cardboard2, false);
+            const geometry = createCombMesh(comb2, false);
             const material = new THREE.MeshLambertMaterial({ color: hsl0x(34, 52 + i/2, 60 + i/2) });
             const mesh = new THREE.Mesh(geometry, material);
             mesh.rotation.y = Math.PI / 2;
             mesh.position.set(notchPos, 0, 0);
 
-            cardboardGroup.add(mesh);
+            combGroup.add(mesh);
 
             const edges = new THREE.EdgesGeometry(geometry);
             const line = new THREE.LineSegments(edges, outlineMaterial);
             line.position.copy(mesh.position);
             line.rotation.copy(mesh.rotation);
-            cardboardGroup.add(line);
+            combGroup.add(line);
         }
     });
 
-    renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPositions2);
+    renderDimensions(comb1, comb2, notchesPositions1, notchesPositions2);
 
     // Warunkowe renderowanie wypełnienia (płytek)
     if (shouldRenderFiller) {
-        renderTiles(cardboard1, cardboard2, notchesPositions1, notchesPositions2);
+        renderTiles(comb1, comb2, notchesPositions1, notchesPositions2);
     }
 }
 
 
 // NOWA FUNKCJA: Renderowanie Płytek (Wypełnienia)
-function renderTiles(cardboard1, cardboard2, notchesPositions1, notchesPositions2) {
+function renderTiles(comb1, comb2, notchesPositions1, notchesPositions2) {
     const { w, d, h, m } = tileDimensions;
 
     // Pobranie aktualnie aktywnych nacięć
-    const selected1 = selectedNotches.axis1[cardboard1.id];
-    const selected2 = selectedNotches.axis2[cardboard2.id];
+    const selected1 = selectedNotches.axis1[comb1.id];
+    const selected2 = selectedNotches.axis2[comb2.id];
     const active1 = notchesPositions1.filter((_, i) => selected1[i]);
     const active2 = notchesPositions2.filter((_, i) => selected2[i]);
 
     // Minimalna wysokość komórki
-    const heightFree = Math.min(cardboard1.depth, cardboard2.depth);
+    const heightFree = Math.min(comb1.depth, comb2.depth);
 
 
     for (let i = 0; i < active1.length - 1; i++) {
@@ -366,8 +374,8 @@ function renderTiles(cardboard1, cardboard2, notchesPositions1, notchesPositions
 
                 // box.position.set(centerX, yOffset, centerZ);
                 // Płytka jest na spodzie, więc Y to h/2 (bo box jest wycentrowany)
-                box.position.set(centerX, -cardboard1.depth / 2 + h / 2, centerZ);
-                cardboardGroup.add(box);
+                box.position.set(centerX, -comb1.depth / 2 + h / 2, centerZ);
+                combGroup.add(box);
             }
         }
     }
@@ -383,23 +391,23 @@ function optimizeLattice() {
 
     let bestScore = -1;
     let bestConfig = null;
-    let bestCardboard1 = null;
-    let bestCardboard2 = null;
+    let bestComb1 = null;
+    let bestComb2 = null;
 
     // Iteracja po wszystkich kombinacjach kartonów (zakładamy, że wysokość kartonów jest głębokością w osi Y)
-    // Oś Pionowa (X-axis) - cardboard1 - kontroluje Szerokość (W)
-    // Oś Pozioma (Z-axis) - cardboard2 - kontroluje Głębokość (D)
+    // Oś Pionowa (X-axis) - comb1 - kontroluje Szerokość (W)
+    // Oś Pozioma (Z-axis) - comb2 - kontroluje Głębokość (D)
 
     // Filtrowanie kartonów, których głębokość (Y-axis) nie jest wystarczająca dla wysokości płytki (H)
-    const availableCardboards = cardboardData.filter(c => Math.min(c.depth, cardboardData[0].depth) >= h);
+    const availableCombs = combsData.filter(c => Math.min(c.depth, combsData[0].depth) >= h);
 
-    if (availableCardboards.length === 0) {
+    if (availableCombs.length === 0) {
         alert("Brak kartonów o wystarczającej wysokości dla płytki.");
         return;
     }
 
-    for (const c1 of availableCardboards) {
-        for (const c2 of availableCardboards) {
+    for (const c1 of availableCombs) {
+        for (const c2 of availableCombs) {
 
             // Wymóg: Wysokość musi się zgadzać (zakładamy, że głębokość c1 musi być wystarczająca dla c2)
             // Jeśli oba kartony mają różne głębokości, to wysokość komórki jest mniejszą z nich.
@@ -471,8 +479,8 @@ function optimizeLattice() {
             if (currentScore > bestScore) {
                 bestScore = currentScore;
                 bestConfig = { config1: idealConfig1, config2: idealConfig2 };
-                bestCardboard1 = c1.id;
-                bestCardboard2 = c2.id;
+                bestComb1 = c1.id;
+                bestComb2 = c2.id;
             }
         }
     }
@@ -480,20 +488,20 @@ function optimizeLattice() {
     // 2. Aplikuj najlepszą konfigurację i odśwież render
     if (bestConfig && bestScore > 0) {
         // Zaznacz wybrane opcje w formularzach
-        selectedCardboards.axis1 = bestCardboard1;
-        selectedCardboards.axis2 = bestCardboard2;
-        selectedNotches.axis1[bestCardboard1] = bestConfig.config1;
-        selectedNotches.axis2[bestCardboard2] = bestConfig.config2;
+        selectedCombs.axis1 = bestComb1;
+        selectedCombs.axis2 = bestComb2;
+        selectedNotches.axis1[bestComb1] = bestConfig.config1;
+        selectedNotches.axis2[bestComb2] = bestConfig.config2;
 
         // Odśwież widok kontroli na podstawie nowej konfiguracji
         updateNotchPanel(1);
         updateNotchPanel(2);
 
         // Ustawienie wartości w selectach
-        document.getElementById('select-cardboard-1').value = bestCardboard1;
-        document.getElementById('select-cardboard-2').value = bestCardboard2;
+        document.getElementById('select-comb-1').value = bestComb1;
+        document.getElementById('select-comb-2').value = bestComb2;
 
-        alert(`Znaleziono najlepszą kratownicę: ${bestCardboard1} (Pionowa) x ${bestCardboard2} (Pozioma), Mieści: ${bestScore} płytek.`);
+        alert(`Znaleziono najlepszą kratownicę: ${bestComb1} (Pionowa) x ${bestComb2} (Pozioma), Mieści: ${bestScore} płytek.`);
 
         renderLattice(true); // Wymuś render z wypełnieniem
     } else {
@@ -502,7 +510,7 @@ function optimizeLattice() {
     }
 }
 
-function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPositions2) {
+function renderDimensions(comb1, comb2, notchesPositions1, notchesPositions2) {
     const outlineMaterial = new THREE.MeshBasicMaterial({ color: scene.background });
     const dimMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 1 });
     const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
@@ -511,16 +519,16 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
     loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
 
         // Wymiary na osi pionowej z frontu jak i z tyłu (dla karonu 1) 
-        const selected1 = selectedNotches.axis1[cardboard1.id];
+        const selected1 = selectedNotches.axis1[comb1.id];
         const activeNotches1 = notchesPositions1.filter((_, i) => selected1[i]);
         for (let i = 0; i < activeNotches1.length - 1; i++) {
             const startPos = activeNotches1[i];
             const endPos = activeNotches1[i + 1];
             const distance = Math.abs(endPos - startPos - THICKNESS).toFixed(1)
             const midPos = (startPos + endPos) / 2;
-            const yOffset = cardboard1.depth / 2;
-            const zOffset = cardboard2.width / 2 + 10;
-            const zOffsetOpposite = -cardboard2.width / 2 - 10;
+            const yOffset = comb1.depth / 2;
+            const zOffset = comb2.width / 2 + 10;
+            const zOffsetOpposite = -comb2.width / 2 - 10;
             const extLineLength = 5;
 
             // Linia pomocnicza 1
@@ -530,7 +538,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             ];
             const geometry1 = new THREE.BufferGeometry().setFromPoints(points1);
             const line1 = new THREE.Line(geometry1, dimMaterial);
-            cardboardGroup.add(line1);
+            combGroup.add(line1);
 
             // Linia pomocnicza 2
             const points2 = [
@@ -539,7 +547,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             ];
             const geometry2 = new THREE.BufferGeometry().setFromPoints(points2);
             const line2 = new THREE.Line(geometry2, dimMaterial);
-            cardboardGroup.add(line2);
+            combGroup.add(line2);
 
             // Linia wymiarowa
             const dimPoints = [
@@ -548,7 +556,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             ];
             const dimGeometry = new THREE.BufferGeometry().setFromPoints(dimPoints);
             const dimLine = new THREE.Line(dimGeometry, dimMaterial);
-            cardboardGroup.add(dimLine);
+            combGroup.add(dimLine);
 
             // Linia pomocnicza 1 tył
             const points3 = [
@@ -557,7 +565,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             ];
             const geometry3 = new THREE.BufferGeometry().setFromPoints(points3);
             const line3 = new THREE.Line(geometry3, dimMaterial);
-            cardboardGroup.add(line3);
+            combGroup.add(line3);
             // Linia pomocnicza 2 tył
             const points4 = [
                 new THREE.Vector3(endPos - THICKNESS / 2, yOffset, zOffsetOpposite),
@@ -565,7 +573,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             ];
             const geometry4 = new THREE.BufferGeometry().setFromPoints(points4);
             const line4 = new THREE.Line(geometry4, dimMaterial);
-            cardboardGroup.add(line4);
+            combGroup.add(line4);
             // Linia wymiarowa
             const dimPoints2 = [
                 new THREE.Vector3(startPos + THICKNESS / 2, yOffset, zOffsetOpposite),
@@ -573,7 +581,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             ];
             const dimGeometry2 = new THREE.BufferGeometry().setFromPoints(dimPoints2);
             const dimLine2 = new THREE.Line(dimGeometry2, dimMaterial);
-            cardboardGroup.add(dimLine2);
+            combGroup.add(dimLine2);
 
             // Tekst
             const textGeometry = new TextGeometry(distance, {
@@ -602,34 +610,34 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             const textMesh = new THREE.Mesh(textGeometry, textMaterial);
             textMesh.position.set(midPos - textWidth / 2, yOffset, zOffset + textHeight + 3);
             textMesh.rotation.x = -Math.PI / 2;
-            cardboardGroup.add(textMesh);
+            combGroup.add(textMesh);
 
             const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial);
             outlineMesh.position.set(midPos - textWidth / 2, yOffset + 0.1, zOffset + textHeight + 3);
             outlineMesh.rotation.x = -Math.PI / 2;
-            cardboardGroup.add(outlineMesh);
+            combGroup.add(outlineMesh);
 
             const textMesh2 = new THREE.Mesh(textGeometry, textMaterial);
             textMesh2.position.set(midPos - textWidth / 2, yOffset + 3, zOffsetOpposite);
-            cardboardGroup.add(textMesh2);
+            combGroup.add(textMesh2);
 
             const outlineMesh2 = new THREE.Mesh(outlineGeometry, outlineMaterial);
             outlineMesh2.position.set(midPos - textWidth / 2, yOffset + 3, zOffsetOpposite + 0.1);
-            cardboardGroup.add(outlineMesh2);
+            combGroup.add(outlineMesh2);
         }
 
 
         // Wymiary na osi poziomej (dla kartonu 2)
-        const selected2 = selectedNotches.axis2[cardboard2.id];
+        const selected2 = selectedNotches.axis2[comb2.id];
         const activeNotches2 = notchesPositions2.filter((_, i) => selected2[i]);
         for (let i = 0; i < activeNotches2.length - 1; i++) {
             const startPos = activeNotches2[i];
             const endPos = activeNotches2[i + 1];
             const distance = Math.abs(endPos - startPos - THICKNESS).toFixed(1);
             const midPos = (startPos + endPos) / 2;
-            const xOffset = -cardboard1.width / 2 - 10;
-            const xOffsetOpposite = cardboard1.width / 2 + 10;
-            const yOffset = cardboard2.depth / 2;
+            const xOffset = -comb1.width / 2 - 10;
+            const xOffsetOpposite = comb1.width / 2 + 10;
+            const yOffset = comb2.depth / 2;
             const extLineLength = 5;
 
             // Linia pomocnicza 1
@@ -639,7 +647,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             ];
             const geometry1 = new THREE.BufferGeometry().setFromPoints(points1);
             const line1 = new THREE.Line(geometry1, dimMaterial);
-            cardboardGroup.add(line1);
+            combGroup.add(line1);
 
             // Linia pomocnicza 2
             const points2 = [
@@ -648,7 +656,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             ];
             const geometry2 = new THREE.BufferGeometry().setFromPoints(points2);
             const line2 = new THREE.Line(geometry2, dimMaterial);
-            cardboardGroup.add(line2);
+            combGroup.add(line2);
 
             // Linia wymiarowa
             const dimPoints = [
@@ -657,7 +665,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             ];
             const dimGeometry = new THREE.BufferGeometry().setFromPoints(dimPoints);
             const dimLine = new THREE.Line(dimGeometry, dimMaterial);
-            cardboardGroup.add(dimLine);
+            combGroup.add(dimLine);
 
             // Linia pomocnicza 1 tył
             const points3 = [
@@ -666,7 +674,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             ];
             const geometry3 = new THREE.BufferGeometry().setFromPoints(points3);
             const line3 = new THREE.Line(geometry3, dimMaterial);
-            cardboardGroup.add(line3);
+            combGroup.add(line3);
             // Linia pomocnicza 2 tył
             const points4 = [
                 new THREE.Vector3(xOffsetOpposite, yOffset, endPos - THICKNESS / 2),
@@ -674,7 +682,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             ];
             const geometry4 = new THREE.BufferGeometry().setFromPoints(points4);
             const line4 = new THREE.Line(geometry4, dimMaterial);
-            cardboardGroup.add(line4);
+            combGroup.add(line4);
             // Linia wymiarowa
             const dimPoints2 = [
                 new THREE.Vector3(xOffsetOpposite, yOffset, startPos + THICKNESS / 2),
@@ -682,7 +690,7 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             ];
             const dimGeometry2 = new THREE.BufferGeometry().setFromPoints(dimPoints2);
             const dimLine2 = new THREE.Line(dimGeometry2, dimMaterial);
-            cardboardGroup.add(dimLine2);
+            combGroup.add(dimLine2);
 
             // Tekst
             const textGeometry = new TextGeometry(distance, {
@@ -711,23 +719,23 @@ function renderDimensions(cardboard1, cardboard2, notchesPositions1, notchesPosi
             textMesh.position.set(xOffset - textHeight - 3, yOffset - 0.1, midPos - textWidth / 2);
             textMesh.rotation.z = -Math.PI / 2;
             textMesh.rotation.x = -Math.PI / 2;
-            cardboardGroup.add(textMesh);
+            combGroup.add(textMesh);
 
             const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial);
             outlineMesh.position.set(xOffset - textHeight - 3, yOffset, midPos - textWidth / 2);
             outlineMesh.rotation.z = -Math.PI / 2;
             outlineMesh.rotation.x = -Math.PI / 2;
-            cardboardGroup.add(outlineMesh);
+            combGroup.add(outlineMesh);
 
             const textMesh2 = new THREE.Mesh(textGeometry, textMaterial);
             textMesh2.position.set(xOffsetOpposite, yOffset + 3, midPos - textWidth / 2);
             textMesh2.rotation.y = -Math.PI / 2;
-            cardboardGroup.add(textMesh2);
+            combGroup.add(textMesh2);
 
             const outlineMesh2 = new THREE.Mesh(outlineGeometry, outlineMaterial);
             outlineMesh2.position.set(xOffsetOpposite - 0.1, yOffset + 3, midPos - textWidth / 2);
             outlineMesh2.rotation.y = -Math.PI / 2;
-            cardboardGroup.add(outlineMesh2);
+            combGroup.add(outlineMesh2);
         }
     });
 }
@@ -845,8 +853,8 @@ window.onload = function () {
 
     const viewScreenshot = document.querySelector('#view-screenshot');
     viewScreenshot.addEventListener('click', () => {
-        let cardboard1 = cardboardData.find(c => c.id === selectedCardboards.axis1);
-        let cardboard2 = cardboardData.find(c => c.id === selectedCardboards.axis2);
+        let comb1 = combsData.find(c => c.id === selectedCombs.axis1);
+        let comb2 = combsData.find(c => c.id === selectedCombs.axis2);
 
         // get scene camera view form threejs renderer and save it as image
         renderer.render(scene, camera);
@@ -854,7 +862,7 @@ window.onload = function () {
             var a = document.createElement('a');
             var url = URL.createObjectURL(blob);
             a.href = url;
-            a.download = `${cardboard1.name} x ${cardboard2.name}`;
+            a.download = `${comb1.name} x ${comb2.name}`;
             a.click();
         }, 'image/png', 1.0);
     })

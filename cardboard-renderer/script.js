@@ -580,14 +580,20 @@ function optimizeLattice() {
         updateNotchPanel(1);
         updateNotchPanel(2);
 
-        alert(`Znaleziono optymalne rozwiązanie:
-- Kratownica: ${comb1.name} x ${comb2.name}
-- Pojemność kratownicy: ${count} elementów.
-- Opakowanie zbiorcze: ${cardboardInfo.cardboard.name}
-- Potrzebne kartony: ${cardboardInfo.boxesNeeded} szt.
-- Całkowita pojemność: ${cardboardInfo.totalCapacity} elementów.
-- Koszt całkowity (kratownice + kartony): ${bestSolution.score.toFixed(2) * cardboardInfo.totalCapacity}
-- Koszt na 1 miejsce: ${bestSolution.score.toFixed(2)}`);
+//         alert(`Znaleziono optymalne rozwiązanie:
+// - Kratownica: ${comb1.name} x ${comb2.name}
+// - Pojemność kratownicy: ${count} elementów.
+// - Opakowanie zbiorcze: ${cardboardInfo.cardboard.name}
+// - Potrzebne kartony: ${cardboardInfo.boxesNeeded} szt.
+// - Całkowita pojemność: ${cardboardInfo.totalCapacity} elementów.
+// - Koszt całkowity (kratownice + kartony): ${bestSolution.score.toFixed(2) * cardboardInfo.totalCapacity}
+// - Koszt na 1 miejsce: ${bestSolution.score.toFixed(2)}`);
+
+        document.getElementById('optimize-lattice-dimensions').innerText = `Wymiary kratownicy: ${comb1.width} x ${comb2.width} mm (szer. x dług.)`;
+        document.getElementById('optimize-lattice-capacity').innerText = `Pojemność kratownicy: ${count} elementów`;
+        document.getElementById('optimize-lattice-cardboard').innerText = `Opakowanie zbiorcze: ${cardboardInfo.cardboard.name}, potrzebne kartony: ${cardboardInfo.boxesNeeded} szt. (całk. pojemność: ${cardboardInfo.totalCapacity} elementów)`;
+        document.getElementById('optimize-lattice-cost').innerText = `Koszt całkowity (kratownice + kartony): ${bestSolution.score.toFixed(2) * cardboardInfo.totalCapacity} zł (koszt na 1 miejsce: ${bestSolution.score.toFixed(2)} zł)`;
+        
 
         renderLattice(true);
     } else {

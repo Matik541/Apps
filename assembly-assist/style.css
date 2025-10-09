@@ -101,7 +101,6 @@ textarea, input[type="text"], input[type="number"], select {
     border: 1px solid #ccc;
     border-radius: 4px;
     overflow: hidden; 
-    flex-grow: 1;
     margin-bottom: 20px;
 }
 

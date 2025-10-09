@@ -27,7 +27,8 @@
                         <option value=",">Przecinek (,)</option>
                         <option value=";">Średnik (;)</option>
                         <option value=" ">Spacja ( )</option>
-                        <option value="fixed">Stałe Pozycje (Fixed Width)</option>
+                        <option value="other" disabled>Inny...</option>
+                        <option value="fixed" disabled>Stałe Pozycje (Fixed Width)</option>
                     </select>
                 </div>
                 <div id="fixed-width-container" style="display:none;">
@@ -89,7 +90,7 @@
             </div>
             
             <section id="component-table-section">
-                <h2>Lista Komponentów (Kliknij Nagłówek, aby Sortować)</h2>
+                <h2>Lista Komponentów</h2>
                 <div id="component-list-container" class="preview-table">
                     </div>
             </section>
@@ -102,11 +103,11 @@
                 <h3>Opcje Wizualizacji</h3>
                 <div class="input-group">
                     <label for="dot-size">Rozmiar Punktu (px):</label>
-                    <input type="number" id="dot-size" min="1" max="20" value="5"> 
+                    <input type="number" id="dot-size" min="1" value="15"> 
                 </div>
                 <div class="input-group">
                     <label for="font-size">Rozmiar Czcionki (px):</label>
-                    <input type="number" id="font-size" value="10" min="5">
+                    <input type="number" id="font-size" value="32" min="5">
                 </div>
                 
                 <div class="input-group">
@@ -119,13 +120,23 @@
                 </div>
                 <div class="input-group">
                     <label for="font-family-input">Rodzina Czcionek:</label>
-                    <input type="text" id="font-family-input" value="sans-serif" placeholder="np. Arial, 'Courier New'">
+                    <input type="text" id="font-family-input" value="cascadia mono" placeholder="np. Arial, 'Courier New'">
                 </div>
                 <div class="input-group">
-                    <label for="color-default">Kolor (Dopasowany):</label>
+                    <label for="color-default">Kolor:</label>
                     <input type="color" id="color-default" value="#0000FF">
                 </div>
-                
+
+                <br>
+                <h3>Kolory Specjalne</h3>
+                <div class="input-group">
+                    <label for="color-led">Kolor Diód:</label>
+                    <input type="color" id="color-led" value="#FF0000">
+                </div>
+                <div class="input-group">
+                    <label for="color-directional" title="MOŻE BRAKOWAĆ!">Kolor Kierunkowych:</label>
+                    <input type="color" id="color-directional" value="#FFA500">
+                </div>
                 </section>
         </aside>
 

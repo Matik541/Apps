@@ -37,7 +37,7 @@ let rawData = "";
 let parsedData = [];
 let headers = [];
 let mappedData = []; // Zostanie posortowane
-let impulsDesignators = new Set();
+let impulsData = []; // { designator: '', index: '', name: '' }
 let uniqueLayers = new Set();
 let layerVisibility = {};
 let currentSort = []; // Tablica obiektów sortowania: [{ column: 'designator', direction: 'asc' }]
@@ -65,7 +65,15 @@ function compareItems(a, b) {
         const bVal = b[sortOption.column];
 
         let comparison = 0;
-        if (typeof aVal === 'number' && typeof bVal === 'number') {
+        if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
+            if (aVal === bVal)
+                comparison = 0;
+            else if (aVal)
+                comparison = 1; // true > false
+            else
+                comparison = -1; // false < true
+
+        } else if (typeof aVal === 'number' && typeof bVal === 'number') {
             comparison = aVal - bVal;
         } else {
             // Bezpieczne porównanie stringów
@@ -324,11 +332,11 @@ function mapAndRender() {
     mappedData = parsedData.map(row => {
         const item = {
             designator: row[mapping.designator]?.trim() || 'N/A',
+            name: 'N/A', // Tymczasowo, zaktualizowane w parseImpulsData
             layer: row[mapping.layer]?.trim() || 'TOP',
             posX: parseFloat(row[mapping.posX]?.replace(',', '.')) || 0,
             posY: parseFloat(row[mapping.posY]?.replace(',', '.')) || 0,
             rotation: parseFloat(row[mapping.rotation]?.replace(',', '.')) || 0,
-            matched: true,
             visible: true
         };
         uniqueLayers.add(item.layer);
@@ -347,20 +355,38 @@ function mapAndRender() {
 
 function parseImpulsData() {
     const impulsLines = impulsDataInput.value.trim().split('\n').filter(line => line.trim() !== '');
-    impulsDesignators = new Set();
+    impulsData = [] // { designator: '', index: '', name: '' }
+
+    if (impulsLines.length === 0) {
+        mappedData.forEach(item => {
+            item.name = 'N/A'; // Reset
+            item.visible = true
+            return item;
+        });
+        updateLayerFilters();
+        applySorting();
+        return;
+    }
 
     impulsLines.forEach(line => {
         const parts = line.split(/[,\t\s]+/).map(p => p.trim()).filter(p => p !== '');
         if (parts.length > 0) {
-            impulsDesignators.add(parts[0]);
+            const designator = parts[0];
+            const index = parts[1] || '';
+            const name = parts.slice(2).join(' ') || '';
+            impulsData.push({ designator, index, name });
         }
     });
 
     mappedData.forEach(item => {
-        const itemDesignator = item.designator.trim();
-        item.matched = impulsDesignators.has(itemDesignator) || (impulsDataInput.value.trim() === '');
-        // ZMIANA: Po usunięciu show-unmatched, brakujące elementy są zawsze widoczne
-        // ale ich styl jest zmienny
+        item.name = 'N/A'; // Reset
+        item.visible = false; // Reset
+        const match = impulsData.find(d => d.designator.toLowerCase() === item.designator.toLowerCase());
+        if (match) {
+            item.visible = true;
+            item.name = match.name;
+        }
+        return item;
     });
 
     updateLayerFilters();
@@ -392,6 +418,13 @@ function updateLayerFilters() {
 function handleLayerVisibilityChange(event) {
     const layer = event.target.dataset.layer;
     layerVisibility[layer] = event.target.checked;
+
+    mappedData.map(item => {
+        item.visible = layerVisibility[item.layer];
+        return item;
+    })
+
+
     updateComponentList();
     renderCanvas();
 }
@@ -399,19 +432,18 @@ function handleLayerVisibilityChange(event) {
 function updateComponentList() {
     componentListContainer.innerHTML = '';
 
-    const visibleData = mappedData.filter(item => layerVisibility[item.layer]);
-
     // Dodanie nagłówków z sortowaniem
     const columnHeaders = [
+        { key: 'visible', label: 'Widoczny' },
         { key: 'designator', label: 'Desygnator' },
+        { key: 'name', label: 'Nazwa indeksu (Impuls)' },
         { key: 'layer', label: 'Warstwa' },
-        { key: 'matched', label: 'Status Impuls' },
         { key: 'posX', label: 'X' },
         { key: 'posY', label: 'Y' },
         { key: 'rotation', label: 'Rotacja' },
     ];
 
-    let html = '<table><thead><tr><th></th>';
+    let html = '<table><thead><tr>';
     columnHeaders.forEach(header => {
         // Dodano data-column i klasę do sortowania
         html += `<th class="component-list-header" data-column="${header.key}" onclick="handleSort('${header.key}')">
@@ -420,20 +452,17 @@ function updateComponentList() {
     });
     html += '</tr></thead><tbody>';
 
-    visibleData.forEach((item, index) => {
+    mappedData.forEach((item, index) => {
         const isChecked = item.visible ? 'checked' : '';
-        // ZMIANA: Użycie stylów z CSS zamiast zmiennych JS w HTML
-        const rowClass = item.matched ? '' : 'component-unmatched';
-        const status = item.matched ? '✔️ Dopasowany' : '⚠️ Brak Impuls';
         // Znalezienie oryginalnego indexu w nieposortowanej (lub ostatnio posortowanej) mappedData
         const componentIndex = mappedData.indexOf(item);
 
         html += `
-            <tr class="${rowClass}"> 
+            <tr> 
                 <td><input type="checkbox" data-index="${componentIndex}" ${isChecked} class="component-visibility-checkbox"></td>
                 <td>${item.designator}</td>
+                <td>${item.name}</td>
                 <td>${item.layer}</td>
-                <td>${status}</td>
                 <td>${item.posX.toFixed(3)}</td>
                 <td>${item.posY.toFixed(3)}</td>
                 <td>${item.rotation.toFixed(2)}</td>
@@ -459,6 +488,7 @@ window.handleSort = handleSort;
 function handleVisibilityChange(event) {
     const index = parseInt(event.target.dataset.index);
     mappedData[index].visible = event.target.checked;
+
     renderCanvas();
 }
 
@@ -518,7 +548,7 @@ function renderCanvas() {
     const allX = filteredData.map(d => d.posX).filter(n => !isNaN(n));
     const allY = filteredData.map(d => d.posY).filter(n => !isNaN(n));
     if (allX.length === 0 || allY.length === 0) {
-        ctx.font = '20px sans-serif';
+        ctx.font = '32px sans-serif';
         ctx.fillStyle = '#999';
         ctx.textAlign = 'center';
         ctx.fillText('Brak widocznych komponentów po przefiltrowaniu.', canvas.width / 2, canvas.height / 2);
@@ -564,8 +594,20 @@ function renderCanvas() {
         const canvasX = (offsetX + (item.posX - minX) * scale) * (isMirrored ? -1 : 1) + (isMirrored ? canvas.width : 0);
         const canvasY = offsetY + (maxY - item.posY) * scale;
 
-        // ZMIANA: kolor jest zależny od matched, kolor dla unmatched jest stały (czerwony)
-        const color = item.matched ? colorDefault : '#FF0000';
+        let color = colorDefault;
+        if (item.designator.toUpperCase().startsWith('D') || item.designator.toUpperCase().startsWith('LD') || item.name.toLowerCase().includes('LED')) {
+            color = document.getElementById('color-led').value || '#FF0000'; // Pomarańczowy dla diod
+        }
+        let directionalKeywords = [
+            'jednokier',
+            'unidirect',
+            'uni-direct',
+            ' direct'
+        ];
+        if (directionalKeywords.some(kw => item.name.toLowerCase().includes(kw))) {
+            color = document.getElementById('color-directional').value || '#FFA500'; // Czerwony dla elementów kierunkowych
+        }
+
 
         // Rysowanie kropki
         if (displayMode === 'dot' || displayMode === 'both') {

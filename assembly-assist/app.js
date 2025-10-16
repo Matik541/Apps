@@ -368,13 +368,31 @@ function parseImpulsData() {
         return;
     }
 
+    let indexName = -2; 
     impulsLines.forEach(line => {
         const parts = line.split(/[,\t\s]+/).map(p => p.trim()).filter(p => p !== '');
+        if (indexName == -2) {
+            indexName = parts.indexOf('Nazwa Indeksu');
+        }
+        if (parts[0].startsWith('[')) return; 
         if (parts.length > 0) {
             const designator = parts[0];
             const index = parts[1] || '';
             const name = parts.slice(2).join(' ') || '';
             impulsData.push({ designator, index, name });
+        }
+    });
+
+    let count = 0;
+    impulsData.forEach(item => {
+        const match = mappedData.find(d => d.designator.toLowerCase() === item.designator.toLowerCase());
+        if (!match) {
+            alert(`Uwaga: Desygnator "${item.designator}" z danych Impuls nie został znaleziony w danych Pick&Place.`);
+            count++;
+        }
+        if (count >= 5) {
+            alert('Za dużo brakujących desygnatorów. Przerwano dalsze powiadomienia.');
+            return;
         }
     });
 
@@ -386,6 +404,7 @@ function parseImpulsData() {
             item.visible = true;
             item.name = match.name;
         }
+
         return item;
     });
 

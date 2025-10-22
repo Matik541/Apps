@@ -386,11 +386,12 @@ function parseImpulsData() {
     let count = 0;
     impulsData.forEach(item => {
         const match = mappedData.find(d => d.designator.toLowerCase() === item.designator.toLowerCase());
-        if (!match) {
+        
+        count++;
+        if (!match && count <= 5) {
             alert(`Uwaga: Desygnator "${item.designator}" z danych Impuls nie został znaleziony w danych Pick&Place.`);
-            count++;
         }
-        if (count >= 5) {
+        if (count == 5) {
             alert('Za dużo brakujących desygnatorów. Przerwano dalsze powiadomienia.');
             return;
         }

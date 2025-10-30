@@ -16,6 +16,7 @@ const container = document.getElementById('canvas-container');
 // ZMIANA: ZWYKŁY INPUT DLA ROZMIARU PUNKTU, USUNIĘCIE SPAN
 const dotSizeInput = document.getElementById('dot-size');
 const fontSizeInput = document.getElementById('font-size');
+const fontRotationInput = document.getElementById('font-rotation');
 // USUNIĘCIE: textStyleSelect
 const fontWeightSelect = document.getElementById('font-weight-select');
 const fontFamilyInput = document.getElementById('font-family-input');
@@ -387,10 +388,12 @@ function parseImpulsData() {
     impulsData.forEach(item => {
         const match = mappedData.find(d => d.designator.toLowerCase() === item.designator.toLowerCase());
         
-        count++;
-        if (!match && count <= 5) {
-            alert(`Uwaga: Desygnator "${item.designator}" z danych Impuls nie został znaleziony w danych Pick&Place.`);
+        if (!match) {
+            count++;
+            console.log(item.designator)
         }
+        if (!match && count <= 5) 
+            alert(`Uwaga: Desygnator "${item.designator}" z danych Impuls nie został znaleziony w danych Pick&Place.`);
         if (count == 5) {
             alert('Za dużo brakujących desygnatorów. Przerwano dalsze powiadomienia.');
             return;
@@ -550,6 +553,9 @@ function renderCanvas() {
     // ZMIANA: USUNIĘTO showUnmatched
     const dotSize = parseFloat(dotSizeInput.value); // ZMIANA: Z range na number
     const fontSize = parseInt(fontSizeInput.value);
+    const fontRotation = parseInt(fontRotationInput.value) || 0;
+    if (fontRotation == -360 || fontRotation == 360) fontRotationInput.value = 0;
+
     // USUNIĘCIE: textStyle
     const fontWeight = fontWeightSelect.value;
     const fontFamily = fontFamilyInput.value || 'sans-serif';
@@ -649,7 +655,7 @@ function renderCanvas() {
             ctx.textBaseline = 'middle';
 
             // Rotacja
-            const rotationRad = (displayMode === 'both') ? 0 : (item.rotation % 180) * (Math.PI / 180)
+            const rotationRad = (displayMode === 'both') ? 0 : (item.rotation % 180) * (Math.PI / 180) + fontRotation * (Math.PI / 180);
 
             // Zapisz stan, przesuń, obróć, narysuj, przywróć
             ctx.save();
@@ -677,7 +683,6 @@ function copyCanvasToClipboard() {
         try {
             const item = new ClipboardItem({ "image/png": blob });
             navigator.clipboard.write([item]);
-            alert('Obraz skopiowany do schowka!');
         } catch (error) {
             console.error('Błąd kopiowania do schowka: ', error);
             alert('Błąd: Nie udało się skopiować obrazu do schowka. Spróbuj zapisać obraz.');
@@ -814,6 +819,7 @@ impulsDataInput.addEventListener('input', parseImpulsData);
 dotSizeInput.addEventListener('input', renderCanvas);
 
 fontSizeInput.addEventListener('input', renderCanvas);
+fontRotationInput.addEventListener('input', renderCanvas);
 // USUNIĘCIE: textStyleSelect.addEventListener('change', renderCanvas);
 fontWeightSelect.addEventListener('change', renderCanvas);
 fontFamilyInput.addEventListener('input', renderCanvas);

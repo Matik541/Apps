@@ -77,8 +77,8 @@
                     <div class="input-group">
                         <label for="display-mode-switch">Tryb Wyświetlania:</label>
                         <select id="display-mode-switch">
-                            <option value="dot">Tylko Kropka</option>
                             <option value="designator">Tylko Desygnator</option>
+                            <option value="dot">Tylko Kropka</option>
                             <option value="both">Kropka i Desygnator</option>
                         </select>
                     </div>
@@ -108,6 +108,11 @@
                 <div class="input-group">
                     <label for="font-size">Rozmiar Czcionki (px):</label>
                     <input type="number" id="font-size" value="32" min="5">
+                </div>
+
+                <div class="input-group">
+                    <label for="font-rotation">Rotacja (+X⁰):</label>
+                    <input type="number" id="font-rotation" value="0" min="-360" max="360">
                 </div>
                 
                 <div class="input-group">
